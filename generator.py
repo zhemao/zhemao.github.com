@@ -41,13 +41,13 @@ def walk_directory(root, extra=''):
 	path = root+'/'+extra
 	levels = len(extra.split('/'))
 	cssprefix = '../'*levels
+	if not isdir('blog/'+extra):
+		os.makedirs('blog/'+extra)
 	f = open(os.getcwd()+'/blog/'+extra+'index.html', 'w')
 	lstr = create_list(root+'/'+extra+'/', cssprefix)
 	f.write(lstr)
 	f.close()
 	for name in os.listdir(path):
-		if not isdir('blog/'+extra):
-			os.makedirs('blog/'+extra)
 		if isdir(path+name):
 			walk_directory(root, extra+name+'/')
 		elif isfile(path+'/'+name):
