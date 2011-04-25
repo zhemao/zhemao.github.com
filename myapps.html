@@ -11,14 +11,17 @@
 <script type="text/javascript"> 
  
 function adjustmain(){
-    var width = $("#header").width()-$("#sidebar").width()-10;
-    $("#main").css("width", width+"px");
-    $("li").css("background-color", "inherit");
+	console.log('adjusting');
+	var width = $("#header").width()-$("#sidebar").width()-10;
+	$("#main").css("width", width+"px");
+	width = $("#header").width()+10
+	$("footer").css("width", width+"px")
+	$("li").css("background-color", "inherit");
 }
- 
+
 $(document).ready(function(){
-    $(window).resize(adjustmain);
-    adjustmain();
+	$(window).resize(adjustmain);
+	adjustmain();
 });
 </script> 
  
