@@ -39,7 +39,7 @@ whereever snakelegs was extracted or cloned and run python setup.py install.
 
 ## License:
 Snakelegs is released under the simplified BSD License, the full text of which 
-can be found [here](http://zhehaomao.com/static/bsd-license.txt).
+can be found [here](../../bsd-license.txt).
 
 ## Getting Help:
 
