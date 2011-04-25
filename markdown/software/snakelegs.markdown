@@ -33,9 +33,8 @@ driver, [PyMongo](http://api.mongodb.org/python/).
 
 Method 1) pip install snakelegs (may need to run as root)
 
-Method 2) Download the latest release from
-[here](http://zhehaomao.com/static/files/snakelegs/snakelegs-0.1.2.tar.gz) or clone
-my git repo on [github](https://github.com/zhemao/snakelegs). Navigate to
+Method 2) Download the latest release or clone my git repo on 
+[github](https://github.com/zhemao/snakelegs). Navigate to
 whereever snakelegs was extracted or cloned and run python setup.py install.
 
 ## License:
