@@ -41,7 +41,6 @@ def walk_directory(root, extra=''):
 	path = root+'/'+extra
 	levels = len(extra.split('/'))
 	cssprefix = '../'*levels
-	print(cssprefix)
 	f = open(os.getcwd()+'/blog/'+extra+'index.html', 'w')
 	lstr = create_list(root+'/'+extra+'/', cssprefix)
 	f.write(lstr)
