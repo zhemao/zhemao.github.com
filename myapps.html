@@ -1,0 +1,81 @@
+
+<!doctype html> 
+<html> 
+<head> 
+<meta charset="utf-8"/> 
+<title> Zhehao Mao </title> 
+ 
+<link rel="stylesheet" type="text/css" href="css/main.css"/> 
+<link rel="stylesheet" type="text/css" href="css/sidebar.css"/> 
+<script type="text/javascript" src="js/jquery.js"></script> 
+<script type="text/javascript"> 
+ 
+function adjustmain(){
+    var width = $("#header").width()-$("#sidebar").width()-10;
+    $("#main").css("width", width+"px");
+    $("li").css("background-color", "inherit");
+}
+ 
+$(document).ready(function(){
+    $(window).resize(adjustmain);
+    adjustmain();
+});
+</script> 
+ 
+</head> 
+<body> 
+<div id="container"> 
+<div id="header"> 
+ 
+<h1>Zhehao Mao</h1> 
+ 
+</div> 
+ 
+  <div id="sidebar"> 
+    <ul> 
+      <li><a href="index.html">About Me</a></li> 
+      <li><a href="myapps.html">My Apps</a></li> 
+      <li><a href="blog/">Blog</a></li> 
+      <li><a href="https://github.com/zhemao/">Github</a></li> 
+    </ul> 
+  </div> 
+  <div id="main"> 
+<h2>My Apps</h2> 
+<p>Here is a list of software that I am currently working on or want to show
+off.</p> 
+<ul> 
+  <li><a href="https://github.com/zhemao/keystore/">Keystore</a> - an in-memory
+key-value cache, similar to memcached and redis.</li> 
+  <li><a href="blog/software/snakelegs">Snakelegs</a> - a Python ORM for MongoDB that &quot;keeps things simple&quot;.</li> 
+  <li><a href="https://github.com/zhemao/pastebin-cli/">Pastebin command line tool</a> - A simple command line tool written in C using libcurl that allows you to quickly upload code to pastebin.com.</li> 
+  <a href="html5/">HTML5 Demos</a> - a few demonstrations I wrote showing the cool things you can do with just Javascript and HTML5.
+  </li> 
+</ul> 
+</div> 
+ 
+<footer> 
+ 
+  <p><a href="http://creativecommons.org/licenses/by-nc-sa/3.0/"> 
+  <img src="images/cclogo.png" alt="CC BY-NC-SA" title="CC BY-NC-SA"/></a> 
+  All content on this site is licensed under a Creative Commons License. Computer code is released under various free software licenses.</p> 
+  <p> 
+  <a href="http://python.org"><img src="images/python-powered.png" alt="Powered by Python" title="Powered by Python"/></a> Powered by Python, the world&apos;s greatest programming language.
+  </p> 
+  <p> 
+    Important Note: Because I am too cheap to get proper hosting, this website
+    is running on my desktop computer, and as such is subject to random and 
+    unannounced periods of downtime. If you find you cannot access this site, 
+    it means I have probably turned off my computer. 
+  </p> 
+  <p> 
+    Very Important Note: I will have to put my computer into storage over the 
+    summer, so this server will be unavailable. I will most likely make the 
+    blog and the front page stuff static and put it on some free static webhost.
+    However, the applications, like the Corpus Analyzer, will not be able to be
+    migrated.
+  </p> 
+ 
+</footer> 
+</div> 
+</body> 
+</html>

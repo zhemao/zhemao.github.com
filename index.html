@@ -1,0 +1,98 @@
+
+<!doctype html> 
+<html> 
+<head> 
+<meta charset="utf-8"/> 
+<title> Zhehao Mao </title> 
+ 
+<link rel="stylesheet" type="text/css" href="css/main.css"/> 
+<link rel="stylesheet" type="text/css" href="css/sidebar.css"/> 
+<script type="text/javascript" src="js/jquery.js"></script> 
+<script type="text/javascript"> 
+ 
+function adjustmain(){
+    var width = $("#header").width()-$("#sidebar").width()-10;
+    $("#main").css("width", width+"px");
+    $("li").css("background-color", "inherit");
+}
+ 
+$(document).ready(function(){
+    $(window).resize(adjustmain);
+    adjustmain();
+});
+</script> 
+ 
+</head> 
+<body> 
+<div id="container"> 
+<div id="header"> 
+ 
+<h1>Zhehao Mao</h1> 
+ 
+</div> 
+ 
+  <div id="sidebar"> 
+    <ul> 
+      <li><a href="index.html">About Me</a></li> 
+      <li><a href="myapps.html">My Apps</a></li> 
+      <li><a href="blog/">Blog</a></li> 
+      <li><a href="https://github.com/zhemao">Github</a></li> 
+    </ul> 
+  </div> 
+  <div id="main"> 
+  <h2>About Me</h2> 
+  <ul> 
+    <li>Name: Zhehao Mao</li> 
+    <li>Summary: Student, Engineer, Coder, and Hacker (in the proper sense of the term) living in New York City.</li> 
+    <li>Email: <a href="mailto:zhehao.mao@gmail.com">zhehao.mao@gmail.com</a></li> 
+    <li>Current Occupations:
+      <ul> 
+        <li>Sysadmin for the <a href="http://cise.columbia.edu">Center for Integrated
+            Science and Engineering</a> at Columbia University</li> 
+        <li>Executive board member of the <a href="http://adicu.com">Application
+            Development Initiative</a></li> 
+        <li>Web developer for <a href="http://columbiaspectator.com">Columbia
+            Spectator</a></li> 
+      </ul> 
+    </li> 
+    <li>School: Columbia University School of Engineering and Applied Sciences</li> 
+      <li>Major: Computer Engineering</li> 
+      <li>Interests:
+        <ul> 
+          <li>Computer Programming</li> 
+          <li>Free and Open Source Software</li> 
+          <li>Electronics and Circuit Design</li> 
+          <li>Anything related to Science or Technology</li> 
+          <li>Jazz Music</li> 
+        </ul> 
+     </li> 
+     <li><a href="resume.pdf">My Resume</a></li> 
+    </ul> 
+</div> 
+ 
+<footer> 
+ 
+  <p><a href="http://creativecommons.org/licenses/by-nc-sa/3.0/"> 
+  <img src="images/cclogo.png" alt="CC BY-NC-SA" title="CC BY-NC-SA"/></a> 
+  All content on this site is licensed under a Creative Commons License. Computer code is released under various free software licenses.</p> 
+  <p> 
+  <a href="http://python.org"><img src="images/python-powered.png" alt="Powered by Python" title="Powered by Python"/></a> Powered by Python, the world&apos;s greatest programming language.
+  </p> 
+  <p> 
+    Important Note: Because I am too cheap to get proper hosting, this website
+    is running on my desktop computer, and as such is subject to random and 
+    unannounced periods of downtime. If you find you cannot access this site, 
+    it means I have probably turned off my computer. 
+  </p> 
+  <p> 
+    Very Important Note: I will have to put my computer into storage over the 
+    summer, so this server will be unavailable. I will most likely make the 
+    blog and the front page stuff static and put it on some free static webhost.
+    However, the applications, like the Corpus Analyzer, will not be able to be
+    migrated.
+  </p> 
+ 
+</footer> 
+</div> 
+</body> 
+</html>

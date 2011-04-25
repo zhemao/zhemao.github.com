@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Software Documentation
+</title>
+
+<link href="../../css/blog.css" rel="stylesheet" type="text/css"/>
+<link href="../../css/codehilite.css" rel="stylesheet" type="text/css"/>
+
+</head>
+<body>
+<div id="container">
+<header>
+<h1>Software Documentation
+</h1>
+</header>
+
+<div id="main">
+  
+    <div class="block">
+    <p><span class="blog_title">Snakelegs: Simplicity by Design</span><a href="snakelegs.html">single view</a></p>
+    <p>2011-04-24</p>
+    <div class="maintext"><p>Snakelegs is a Python ORM for MongoDB that follows the KISS ("Keep it Simple,
+Stupid") principle.</p>
+<p>You may ask what the significance of the name "Snakelegs" is. It is not, as you
+may think, because it is written in python. It actually comes from a
+Chinese parable about a contest to see who could draw a snake the fastest.
+The first contestant to finish drawing finished well before the others, so he
+decided to embellish his drawing by drawing legs on the snake. The second
+contestant to finish then claimed that he was the first. The first contestant
+raised a complaint, but the judge sided with the second contestant, stating,
+"Who ever heard of a snake with legs?" Thus arises the Chinese idiom:
+"Drawing legs on the snake," meaning, "making things complicated when it is
+unneccessary and possibly detrimental." </p>
+<p>I started writing snakelegs after having a bad experience with a different
+python Mongo ORM called MongoEngine. MongoEngine tries to abstract the
+database querying to use a Django-like syntax. This is sort of silly
+because Django's database querying syntax was designed for use with
+relational databases, and MongoDB's own query syntax is already simple and 
+powerful. I felt that such pointless abstraction was a waste of precious
+processing cycles. In Snakelegs, you query MongoDB using the same dict-based
+query language that the PyMongo driver uses. Snakelegs simply provides a
+Document class with methods that allow you to work with MongoDB in an
+intuitive, object-oriented way.</p>
+<h2 id="dependencies">Dependencies:</h2>
+<p><a href="http://mongodb.org">MongoDB</a> database server with the corresponding python
+driver, <a href="http://api.mongodb.org/python/">PyMongo</a>.</p>
+<h2 id="installation">Installation:</h2>
+<p>Method 1) pip install snakelegs (may need to run as root)</p>
+<p>Method 2) Download the latest release from
+<a href="http://zhehaomao.com/static/files/snakelegs/snakelegs-0.1.2.tar.gz">here</a> or clone
+my git repo on <a href="https://github.com/zhemao/snakelegs">github</a>. Navigate to
+whereever snakelegs was extracted or cloned and run python setup.py install.</p>
+<h2 id="license">License:</h2>
+<p>Snakelegs is released under the simplified BSD License, the full text of which 
+can be found <a href="http://zhehaomao.com/static/bsd-license.txt">here</a>.</p>
+<h2 id="getting_help">Getting Help:</h2>
+<p>A User's Guide is available <a href="/blog/software/snakelegs-user-guide">here</a>.
+API Documentation is available at http://packages.python.org/snakelegs/. </p>
+<p>I've tried to make the documentation clear, but if you have any problems with
+Snakelegs, please contact me at zhehao.mao@gmail.com. I'd be glad to answer
+questions (since that means people are actually using my code).</p>
+<h2 id="contributing">Contributing</h2>
+<p>If you would like to add a feature or fix a bug, feel free to fork the repo and
+then send me a pull request. If you would like to get more involved: contact me
+and I'll add you as a collaborator.</p></div>
+    </div>
+  
+    <div class="block">
+    <p><span class="blog_title">Snakelegs User Guide</span><a href="snakelegs-user-guide.html">single view</a></p>
+    <p>2011-04-24</p>
+    <div class="maintext"><h2 id="connecting">Connecting</h2>
+<p>Before you can use snakelegs. You will have to open a connection to MongoDB. This can be achieved quite easily with the <code>connect</code> function. Just do:</p>
+<div class="codehilite"><pre><span class="kn">from</span> <span class="nn">snakelegs</span> <span class="kn">import</span> <span class="n">connect</span>
+
+<span class="n">connect</span><span class="p">(</span><span class="s">&#39;mydatabase&#39;</span><span class="p">,</span> <span class="s">&#39;localhost&#39;</span><span class="p">,</span> <span class="mi">27094</span><span class="p">,</span> <span class="s">&#39;username&#39;</span><span class="p">,</span> <span class="s">&#39;password&#39;</span><span class="p">)</span>
+</pre></div>
+
+
+<p>This will connect to the database "mydatabase" on the MongoDB instance
+listening on the port 27094 on localhost. It will also authenticate against
+the server with credentials "username" and "password" (this is just an example,
+do not actually use those credentials). All of these arguments are optional.
+The default database is "snakelegs", the default host is "localhost", and the
+default port is the default Mongo port: 27017. Username and password are blank
+by default. When they are blank, snakelegs will assume that the Mongo instance
+is running in a trusted environment (which is the default if you are running it
+on your local machine).</p>
+<h2 id="defining_a_document">Defining a Document</h2>
+<p>In Snakelegs, a Model (in the MVC sense) is called a Document. You can
+represent your data by creating a subclass of Document like so:</p>
+<div class="codehilite"><pre><span class="k">class</span> <span class="nc">MyDocument</span><span class="p">(</span><span class="n">Document</span><span class="p">):</span>
+    <span class="n">astring</span> <span class="o">=</span> <span class="n">StringField</span><span class="p">()</span>
+    <span class="n">anint</span> <span class="o">=</span> <span class="n">IntField</span><span class="p">()</span>
+</pre></div>
+
+
+<p>That's it. To create a document, just do this:</p>
+<div class="codehilite"><pre><span class="n">doc</span> <span class="o">=</span> <span class="n">MyDocument</span><span class="p">(</span><span class="n">astring</span><span class="o">=</span><span class="s">&#39;foo&#39;</span><span class="p">,</span> <span class="n">anint</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+
+
+<p>Then you can save your document with <code>doc.save()</code>.</p>
+<h2 id="finding_documents_in_mongodb">Finding documents in MongoDB</h2>
+<p>To query for documents with snakelegs, you can use the <code>find</code> method, which is
+a classmethod in the Document class. You can use it like so.</p>
+<div class="codehilite"><pre><span class="n">docs</span> <span class="o">=</span> <span class="n">MyDocument</span><span class="o">.</span><span class="n">find</span><span class="p">({</span><span class="s">&#39;astring&#39;</span><span class="p">:</span><span class="s">&#39;foo&#39;</span><span class="p">})</span>
+</pre></div>
+
+
+<p>This will return a list of instances of MyDocument that match the query. The query syntax is just the PyMongo query syntax. You should consult the PyMongo manual at [[http://api.mongodb.org/python/]] for more.</p>
+<p>If you only want a single result instead of a list, you can use the find_one
+classmethod.</p>
+<div class="codehilite"><pre><span class="n">doc</span> <span class="o">=</span> <span class="n">MyDocument</span><span class="o">.</span><span class="n">find_one</span><span class="p">({</span><span class="s">&#39;astring&#39;</span><span class="p">:</span><span class="s">&#39;foo&#39;</span><span class="p">})</span>
+</pre></div>
+
+
+<p>This will return the first document that matches the query.</p>
+<p>Deleting a document is as easy as saving one. It's just <code>doc.delete()</code>.</p></div>
+    </div>
+  
+    <div class="block">
+    <p><span class="blog_title">Corpus API Documentation</span><a href="corpus-api.html">single view</a></p>
+    <p>2011-04-24</p>
+    <div class="maintext"><p>Along with my Corpus Analyzer application. I am providing a RESTful API for
+developers interested in building apps around the British and American National
+Corpora. This API allows you to query for word counts in either corpus.</p>
+<p>To use the API, set a GET request to http://zhehaomao.com/corpus/api/. There
+should be one GET parameter called <code>q</code>, which holds the query. This query
+should should be a well-formed JSON string. The JSON can either be an object
+or a list. If it is an object, it should have two keys, "corpus" and
+"word". The corpus key should hold the corpus you wish to search in,
+either "anc" or "bnc" and the word key should contain the word you want to
+search. If it is a list, it should be a list of objects in the
+same format as the single object parameter.</p>
+<p>If an object is passed in, the response will be a JSON object with three fields,
+"ok", "count", and "relfreq". The "ok" field will be set to <em>true</em> if the query
+is well formed or false otherwise. If ok is <em>false</em>, the other parts of the
+response will not be present. The "count" field gives the absolute number of
+occurences in the corpus. The "relfreq" field gives the relative frequency, which
+is the count divided by the total word count in the corpus. If the request argument
+was a list, a JSON list will be returned. Each element of the list will be an object
+in the same format as a single object response.</p>
+<p>If you want the entire corpora, CSV files are available <a href="http://zhehaomao.com/static/files/corpora/">here</a>.
+The CSV files contain the word in the first column and the count in the second. The first row is
+marked TOTAL. This is the total number of words in the corpus.</p>
+<p>Important Note:
+I do not keep the entire ANC or BNC because of the long tail in the distribution. I only keep
+those words which are used more than 5 times. </p></div>
+    </div>
+  
+  <p><a href="/">Back to Home</a></p>
+
+</div>
+</body>
+</html>

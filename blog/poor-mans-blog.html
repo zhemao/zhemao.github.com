@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>The Poor Man&#39;s Blog Engine: No Database Required</title>
+
+<link href="../css/blog.css" rel="stylesheet" type="text/css"/>
+<link href="../css/codehilite.css" rel="stylesheet" type="text/css"/>
+
+</head>
+<body>
+<div id="container">
+<header>
+<h1></h1>
+</header>
+
+<div class="main">
+  <div class="block">
+    <p><span class="blog_title">The Poor Man&#39;s Blog Engine: No Database Required</span>
+    <div class="maintext"><p>I finally got around to implementing a blog feature on my site. As the title
+suggests, the implementation is rather simple. Unlike mainstream blog engines
+like Wordpress, which require a database backend and include fancy things like
+a WYSIWIG editor, my custom blog engine simply uses the native filesystem.</p>
+<p>"But how?" you may ask. "Good question" I say. The way it works is that each
+article is in fact a Markdown file sitting in a directory on the server.
+The url of the article is just the filename. The first line in the file is used as the article
+title, and everything else is used as the article body. The date created and the date modified
+are taken by simply performing a <code>stat</code> command (actually, by using the <code>os.stat</code>
+function in the Python stdlib, but it's basically the same thing). The article
+body is passed through the python <a href="http://www.freewisdom.org/projects/python-markdown/">Markdown</a>
+module, and the article itself goes through web.py to jinja2 and then out to the browser.
+To create an article, I just make a new markdown file. And to edit, I just use
+a regular text editor.</p>
+<p>Your next question, <em>hopefully</em>, may be "That sounds cool, can I use it?" The answer is
+that the engine is not really standalone just yet. If there is any interest,
+I may reimplement the engine as a static site generator, in the vein of
+<a href="https://github.com/mojombo/jekyll">Jekyll</a> and <a href="http://ringce.com/hyde">Hyde</a>.
+I suggest looking into either of those two first, as they already exist.</p></div>
+  </div>
+  <p class="date">Created: 2011-04-24</p>
+  <p class="date">Last Modified: 2011-04-24</p>
+  <p><a href="/blog/">Back to Blog Home</a></p>
+  <p><a href="/">Back to Home</a></p>
+</div>
+
+</div>
+</body>
+</html>

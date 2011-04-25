@@ -1,0 +1,15 @@
+{% extends "blog_base.html" %}
+{% block title %}{{article.title}}{% endblock %}
+
+{% block main %}
+<div class="main">
+  <div class="block">
+    <p><span class="blog_title">{{article.title}}</span>
+    <div class="maintext">{{article.body|safe}}</div>
+  </div>
+  <p class="date">Created: {{article.created}}</p>
+  <p class="date">Last Modified: {{article.modified}}</p>
+  <p><a href="/blog/">Back to Blog Home</a></p>
+  <p><a href="/">Back to Home</a></p>
+</div>
+{% endblock %}
