@@ -8,9 +8,10 @@ h2 {
 }
 #main {
   float: left;
-  padding:10px;
+  padding: 10px;
   background-color: inherit;
-  min-height:480px;
+  min-height: 480px;
+  width: 780px;
 }
 #logo {
   float:left;
@@ -43,6 +44,7 @@ footer {
   padding-left: 10px;
   padding-right: 10px;
   background-color: inherit;
+  width: 940px;
 }
 
 img {
@@ -50,9 +52,9 @@ img {
 }
 
 #container{
-  /*min-width: 960px;*/
-  margin-left: 30px;
-  margin-right: 30px;
+  width: 960px;
+  margin-left: auto;
+  margin-right: auto;
   background-color: #fff;
 }
 

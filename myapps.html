@@ -8,22 +8,7 @@
 <link rel="stylesheet" type="text/css" href="css/main.css"/> 
 <link rel="stylesheet" type="text/css" href="css/sidebar.css"/> 
 <script type="text/javascript" src="js/jquery.js"></script> 
-<script type="text/javascript"> 
-function adjustmain(){
-	console.log('adjusting');
-	var width = $("#header").width()-$("#sidebar").width()-10;
-	$("#main").css("width", width+"px");
-	width = $("#header").width()+10
-	$("footer").css("width", width+"px")
-	$("li").css("background-color", "inherit");
-}
 
-$(document).ready(function(){
-	$(window).resize(adjustmain);
-	adjustmain();
-});
-</script> 
- 
 </head> 
 <body> 
 <div id="container"> 
