@@ -7,11 +7,8 @@ h2 {
   margin-bottom:10px;
 }
 #main {
-  float: left;
-  padding: 10px;
-  background-color: inherit;
-  min-height: 480px;
-  width: 780px;
+  margin: 10px;
+  padding: 5px;
 }
 #logo {
   float:left;
@@ -32,32 +29,25 @@ li ul {
   list-style-type:square;
   margin-left:20px;
 }
-#header{
+
+#header, header{
   background-color:#00c;
   padding: 10px;
   padding-left: 20px;
 }
 
-footer {
-  float: left;
-  padding-top: 20px;
-  padding-left: 10px;
-  padding-right: 10px;
-  background-color: inherit;
-  width: 940px;
-}
 
 img {
   margin:5px;
 }
 
 #container{
-  width: 960px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 10px 30px 10px 30px;
+  height: 100%;
   background-color: #fff;
 }
 
 body{
   background-color: #ddd;
 }
+
