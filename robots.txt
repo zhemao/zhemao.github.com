@@ -1,0 +1,8 @@
+# Asimov's 3 Laws of Robots encoded in robots.txt format
+# Based off the robots.txt of last.fm
+# See http://www.last.fm/robots.txt
+
+User-agent: *
+Disallow: /harm/humans
+Disallow: /disobey/humans
+Disallow: /harm/self
