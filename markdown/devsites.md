@@ -1,0 +1,33 @@
+## Useful Websites for Developers
+
+I am collecting a list of interesting and useful online resources for developers. 
+If you have any suggestions for additions to this list, feel free to fork and
+then send a pull request.
+
+### Free Webhosting
+* [AlwaysData](http://alwaysdata.com)
+* [DotCloud](http://dotcloud.com)
+* [Kodingen](http://kodingen.com)
+
+### VPS Hosting
+* [Dreamhost](http://dreamhost.com)
+* [Linode](http://linode.com)
+* [Rackspace](http://rackspace.com)
+* [Amazon Web Services](http://aws.amazon.com)
+
+### Project Hosting
+* [Github](https://github.com)
+* [Bitbucket](http://bitbucket.org)
+* [Gitorious](http://gitorious.org)
+* [Google Code](http://code.google.com)
+* [Launchpad](http://launchpad.net)
+* [SourceForge](http://sourceforge.net)
+
+### Pastebin Sites
+* [snipt.net](http://snipt.net)
+* [pastebin.com](http://pastebin.com)
+* [gist.github.com](http://gist.github.com)
+
+### Communities
+* [Stack Overflow](http://stackoverflow.com)
+* [Forrst](http://forrst.com)
