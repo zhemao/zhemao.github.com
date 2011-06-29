@@ -10,7 +10,7 @@ then send a pull request.
 * [Kodingen](http://kodingen.com)
 
 ### VPS Hosting
-* [Dreamhost](http://dreamhost.com)
+* [Slicehost](http://slicehost.com)
 * [Linode](http://linode.com)
 * [Rackspace](http://rackspace.com)
 * [Amazon Web Services](http://aws.amazon.com)
