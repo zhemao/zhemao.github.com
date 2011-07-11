@@ -15,15 +15,20 @@
 	* Anything related to Science or Technology
 	* Jazz Music
 
+[![Google Plus](images/google_plus_32.png)](https://plus.google.com/104423634081365897250/about)
+[![Tumblr](images/tumblr_32.png)](http://zhemao.tumblr.com/)
+[![Github](images/github_32.png)](https://github.com/zhemao)
+
+
 ## Brief Bio
 
 My name is Zhehao Mao, but everyone calls me Howie. I am a computer engineering 
 major in the School of Engineering and Applied Science at Columbia University. 
 I grew up in Charleston, SC, but reside in New York City during the school year. 
 Computer programming and electronics are my main hobbies, as well as my calling 
-in life. You can find some of my code on [Github](https://github.com/zhemao/") 
-and [Bitbucket](http://bitbucket.org/zhemao). I also have a 
-[blog](http://zhemao.tumblr.com), which I update rather infrequently. 
+in life. I am proficient in Python, C, C++, and Java and familiar with Perl and
+Javascript. You can find some of my code on [Github](https://github.com/zhemao) 
+and [Bitbucket](https://bitbucket.org/zhemao).
 
 ## Random Links
 
