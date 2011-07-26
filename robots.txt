@@ -1,5 +1,5 @@
 User-agent: *
 Disallow: /templates
 Disallow: /markdown
-Disallow: /scripts
+Disallow: /newpost.sh
 

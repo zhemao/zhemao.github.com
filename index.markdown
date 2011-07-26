@@ -43,5 +43,4 @@ and [Bitbucket](https://bitbucket.org/zhemao).
 
 * [My Resume](resume.pdf)
 * [Random HTML5/JS Experimentation](html5/)
-* [Useful Websites for Developers](2011/06/13/devsites.html)
 
