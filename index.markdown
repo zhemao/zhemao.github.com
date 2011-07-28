@@ -45,8 +45,8 @@ and [Bitbucket](https://bitbucket.org/zhemao).
 * [My Resume](resume.pdf)
 * [Random HTML5/JS Experimentation](html5/)
 
-The information on this page and in the blog posts are the Copyright Zhehao Mao.
+The information on this page and in the blog posts are Copyright Zhehao Mao.
 
 Site layout, including html templates, CSS stylesheets, and Javascript code
 are released under a BSD License, reproduced [here](/bsd-license.txt). The HTML5
-demos are also released under the BSD License. 
+demos are also released under a BSD License. 
