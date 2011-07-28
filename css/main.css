@@ -10,12 +10,6 @@ h2 {
   margin: 10px;
   padding: 5px;
 }
-#logo {
-  float:left;
-  height:80px;
-  margin:5px;
-  margin-right:20px;
-}
 
 ul {
   list-style-type:none;
@@ -32,8 +26,9 @@ li ul {
 
 #header, header{
   background-color:#00c;
-  padding: 10px;
+  padding: 5px;
   padding-left: 20px;
+  margin: 0px;
 }
 
 

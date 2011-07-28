@@ -1,9 +1,9 @@
 ---
-title: Zhehao Mao's Website
+title: Main Page
 layout: default
 ---
 
-## Summary
+## About Me
 
 * Name: Zhehao Mao
 * Email: zhehao.mao@gmail.com
@@ -26,11 +26,12 @@ layout: default
 
 ## Brief Bio
 
-My name is Zhehao Mao, but everyone calls me Howie. I am a computer engineering 
-major in the School of Engineering and Applied Science at Columbia University. 
-I grew up in Charleston, SC, but reside in New York City during the school year. 
-Computer programming and electronics are my main hobbies, as well as my calling 
-in life. I am proficient in Python, C, C++, and Java and familiar with Perl and
+My name is Zhehao Mao, but everyone calls me Howie (because most in the US have
+trouble pronouncing Zhehao). I am a computer engineering major in the School of 
+Engineering and Applied Science at Columbia University. I grew up in 
+Charleston, SC, but reside in New York City during the school year. Computer 
+programming and electronics are my main hobbies, as well as my calling in life. 
+I am proficient in Python, C, C++, and Java and familiar with Perl and 
 Javascript. You can find some of my code on [Github](https://github.com/zhemao) 
 and [Bitbucket](https://bitbucket.org/zhemao).
 
