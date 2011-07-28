@@ -1,13 +1,14 @@
 ---
-title: Things Every Python Programmer Should Know
+title: Things Every Python Programmer Should Know but Generally Don't
 layout: default
 ---
 
 Python is a really great programming language, and one of the many reasons
 for its success is a simple, easy-to-understand syntax. That being said,
 there are some things that can trip up beginners (and which have tripped me
-up before). Therefore, I am attempting to document some of the common pitfalls
-here.
+up before). There are also a few little known features that turn out to be 
+rather useful. I am attempting to document some of the common pitfalls and
+esoteric-but-useful features here.
 
 ## Efficient String Concatenation
 
@@ -29,11 +30,11 @@ But this is very inefficient for the reason that a new string has to be created
 and assigned to mystr on each loop. What is the most efficient method of 
 concatenation? List comprehension.
 
-{% highlight python %}
+    {% highlight python %}
 	mystr = ''.join([s for s in genstr(n)])
 	# or alternatively
 	mystr = ''.join(s for s in genstr(n))
-{% endhighlight %}
+    {% endhighlight %}
 
 The second is actually a generator comprehension, not a list comprehension. 
 They are more memory efficient (as you don't have to pre-allocate the entire
@@ -79,7 +80,7 @@ Class attributes are bound when the class is created, and default parameters
 are bound when the function is created. Mutating the state of class attributes
 will change the attribute in all instances of a class. Mutating the state of a
 default parameter will cause that change to persist in all future calls of the
-function. This means that both of the following should be avoiding.
+function. This means that both of the following should be avoided.
 
 	{% highlight python %}
 	class A:
@@ -98,7 +99,7 @@ function. This means that both of the following should be avoiding.
 	# 5 times in the returned list
 	{% endhighlight %}
 
-Instead, do it like this.
+Instead, do it like this. 
 
 	{% highlight python %}
 	class A:
@@ -110,4 +111,52 @@ Instead, do it like this.
 		if a==None: a = []
 		a.append('blah')
 	{% endhighlight %}
+
+## Sets
+
+The `list`, `dict`, and `tuple` builtin classes in Python are rather well-known. 
+The `set` and `frozenset` classes, not so much. A set in Python represents the
+mathematical concept of a set. It is an unordered container with unique elements.
+A frozenset has the same interface as a set, but is immutable, like a tuple.
+A set and a frozenset are declared like the following.
+
+    {% highlight python %}
+    # A set
+    {'a','b','c'}
+    #A frozenset
+    frozenset({'a','b','c'}) 
+    # the argument to frozenset can be any iterable, including a list or tuple
+    {% endhighlight %}
+
+What is the usefulness of a set? The main advantages of a set are that there
+are no duplicates, and that lookups can be done in constant time. For example,
+let's say that you have a very long string of words separated by newlines, and 
+you want to find out whether each word in a list of words was contained in that
+string. How would you accomplish this? The first thing you might try is.
+
+    {% highlight python %}
+    contained = [(word in long_string) for word in word_list]
+    {% endhighlight %}
+
+But this is not very efficient, because you have to go searching in the string
+every single time. Now what if we first split the string into a list?
+
+    {% highlight python %}
+    long_string_list = long_string.split()
+    contained = [(word in long_string_list) for word in word_list]
+    {% endhighlight %}
+
+This is also not quite so efficient, because looking up an item in a list still
+takes O(n) time. Now, what if we used a set?
+
+    {% highlight python %}
+    long_string_set = set(long_string.split())
+    contained = [(word in long_string_set) for word in word_list]
+    {% endhighlight %}
+
+Looking up a word in a set happens in constant time, so this method is very
+efficient. Now of course, splitting a string into a list and turning a list 
+into a set involve some processing cycles of their own, which is why the third
+way will only be fastest for very large lists. For very small lists, the first
+way is still faster.
 
