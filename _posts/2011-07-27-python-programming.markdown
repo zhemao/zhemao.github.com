@@ -112,6 +112,37 @@ Instead, do it like this.
 		a.append('blah')
 	{% endhighlight %}
 
+## Multiline Strings
+
+One of the nice features of Python is the ability to have multiline string 
+literals. The canonical way of doing this is the docstring, which looks like
+
+    {% highlight python %}
+    '''This is a string
+    that spans two lines.'''
+    {% endhighlight %}
+
+But I just learned recently that it can also be achieved like so.
+
+    {% highlight python %}
+    ("This is another string "
+    "that is declared on two lines.")
+
+So what is the difference? In a docstring, all newlines and whitespace are
+preserved, in the second declaration, only the parts inside the quotes are 
+rendered into the final string. Therefore, the first string when printed out
+looks like.
+
+    This is a string
+    that spans two lines.
+
+While the second will simply be
+
+    This is another string that is declared on two lines.
+
+If you don't want the newlines to show up as-is, the second type of declaration
+could be very useful.
+
 ## Sets
 
 The `list`, `dict`, and `tuple` builtin classes in Python are rather well-known. 
