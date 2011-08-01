@@ -127,6 +127,7 @@ But I just learned recently that it can also be achieved like so.
     {% highlight python %}
     ("This is another string "
     "that is declared on two lines.")
+    {% endhighlight %}
 
 So what is the difference? In a docstring, all newlines and whitespace are
 preserved, in the second declaration, only the parts inside the quotes are 
