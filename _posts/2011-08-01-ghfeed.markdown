@@ -12,4 +12,5 @@ message and store the info in the database. You can then navigate to a url and
 get a generated RSS feed of all the flagged commits. The website is up at
 [ghfeed.heroku.com](http://ghfeed.heroku.com). The application is open-source,
 and the github repo can be found at 
-[github.com/zhemao/gfheed](https://github.com/zhemao/ghfeed).
+[github.com/zhemao/gfheed](https://github.com/zhemao/ghfeed). Github feed is 
+built on Sinatra and MongoDB.
