@@ -1,11 +1,2 @@
-My github pages site. I am putting this repository up because I will be 
-putting my Desktop computer into storage for the summer, and so my regular
-website will be unavailable. 
-
-This is essentially just a static mirror of what was the front
-page of http://zhehaomao.com/. The index and myapps page are present, as well
-as the javascript/html5 demos. The blog has been moved to 
-http://zhemao.tumblr.com. 
-
-At this point in time, the domain zhehaomao.com has been set to redirect to
-zhemao.github.com.
+My personal webpage and blog, generated using Tom Preston-Werner's wonderful
+static-site generator Jekyll.

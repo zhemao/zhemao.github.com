@@ -1,5 +1,7 @@
 h1 {
   font-size:36px;
+  margin: 0px;
+  padding: 5px;
 }
 h2 {
   font-size:24px;
@@ -29,8 +31,12 @@ li ul {
   padding: 5px;
   padding-left: 20px;
   margin: 0px;
+  color: #ccc;
 }
 
+#footer, footer{
+  padding-left: 10px;
+}
 
 img {
   margin:5px;
