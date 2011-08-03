@@ -31,7 +31,7 @@ trouble pronouncing Zhehao). I am a computer engineering major in the School of
 Engineering and Applied Science at Columbia University. I grew up in 
 Charleston, SC, but reside in New York City during the school year. Computer 
 programming and electronics are my main hobbies, as well as my calling in life. 
-I am proficient in Python, C, C++, and Java and familiar with Perl and 
+I am proficient in Python, C, C++, and Java and familiar with Ruby, Perl and 
 Javascript. You can find some of my code on [Github](https://github.com/zhemao) 
 and [Bitbucket](https://bitbucket.org/zhemao).
 
