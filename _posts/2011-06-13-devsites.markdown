@@ -12,6 +12,7 @@ then send a pull request.
 * [DotCloud](http://dotcloud.com)
 * [Kodingen](http://kodingen.com)
 * [Heroku](http://heroku.com)
+* [FluxFlex](http://fluxflex.com)
 
 ## VPS Hosting
 * [Slicehost](http://slicehost.com)
