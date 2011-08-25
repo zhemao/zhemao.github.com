@@ -36,3 +36,8 @@ then send a pull request.
 ## Communities
 * [Stack Overflow](http://stackoverflow.com)
 * [Forrst](http://forrst.com)
+
+## Other Helpful Tools
+* [Local Tunnel](http://progrium.com/localtunnel/)
+* [Blitz.io](http://blitz.io/)
+* [JSFiddle](http://jsfiddle.net/)
