@@ -13,6 +13,7 @@ then send a pull request.
 * [Kodingen](http://kodingen.com)
 * [Heroku](http://heroku.com)
 * [FluxFlex](http://fluxflex.com)
+* [CloudFoundry](http://www.cloudfoundry.com/)
 
 ## VPS Hosting
 * [Slicehost](http://slicehost.com)
