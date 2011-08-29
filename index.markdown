@@ -7,10 +7,6 @@ layout: default
 
 * Name: Zhehao Mao
 * Email: zhehao.mao@gmail.com
-* Current Occupations:
-	* Software engineering intern at [SAIC](http://saic.com)
-	* Executive board member of the [Application Development Initiative](http://adicu.com) 
-	* Web developer for [Columbia Spectator](http://columbiaspectator.com)
 * School: Columbia University School of Engineering and Applied Sciences
 * Major: Computer Engineering
 * Interests:
