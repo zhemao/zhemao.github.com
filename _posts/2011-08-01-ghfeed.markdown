@@ -1,6 +1,6 @@
 ---
 title: "My First Heroku App: Github Feed"
-layout: default
+layout: post 
 ---
 
 # My First Heroku App: Github Feed
