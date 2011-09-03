@@ -14,6 +14,7 @@ then send a pull request.
 * [Heroku](http://heroku.com)
 * [FluxFlex](http://fluxflex.com)
 * [CloudFoundry](http://www.cloudfoundry.com/)
+* [Gondor.io](http://gondor.io)
 
 ## VPS Hosting
 * [Slicehost](http://slicehost.com)
