@@ -64,17 +64,17 @@ Two sources of endless confusion and bugs in Python come from a misunderstanding
 of the scope of class attributes and default parameters for functions. A class
 attribute looks like the following.
 
-	{% highlight python %}
-	class A:
-		a = 'blah'
-	{% endhighlight %}
+{% highlight python %}
+class A:
+	a = 'blah'
+{% endhighlight %}
 
 A default parameter looks like this.
 	
-	{% highlight python %}
-	def something(a = 'blah'):
-		pass
-	{% endhighlight %}
+{% highlight python %}
+def something(a = 'blah'):
+	pass
+{% endhighlight %}
 
 Class attributes are bound when the class is created, and default parameters
 are bound when the function is created. Mutating the state of class attributes
@@ -82,64 +82,64 @@ will change the attribute in all instances of a class. Mutating the state of a
 default parameter will cause that change to persist in all future calls of the
 function. This means that both of the following should be avoided.
 
-	{% highlight python %}
-	class A:
-		a = []
-	
-	b = A()
-	c = A()
-	b.a.append('blah')
-	# now b.a and c.a are both ['blah']
+{% highlight python %}
+class A:
+	a = []
 
-	def something(a = []):
-		a.append('blah')
-		return a
+b = A()
+c = A()
+b.a.append('blah')
+# now b.a and c.a are both ['blah']
 
-	# calling something without arguments 5 times will cause 'blah' to show up
-	# 5 times in the returned list
-	{% endhighlight %}
+def something(a = []):
+	a.append('blah')
+	return a
+
+# calling something without arguments 5 times will cause 'blah' to show up
+# 5 times in the returned list
+{% endhighlight %}
 
 Instead, do it like this. 
 
-	{% highlight python %}
-	class A:
-		def __init__(self):
-			self.a = []
-			self.a.append('blah')
+{% highlight python %}
+class A:
+	def __init__(self):
+		self.a = []
+		self.a.append('blah')
 
-	def something(a = None):
-		if a==None: a = []
-		a.append('blah')
-	{% endhighlight %}
+def something(a = None):
+	if a==None: a = []
+	a.append('blah')
+{% endhighlight %}
 
 ## Multiline Strings
 
 One of the nice features of Python is the ability to have multiline string 
 literals. The canonical way of doing this is the docstring, which looks like
 
-    {% highlight python %}
-    '''This is a string
-    that spans two lines.'''
-    {% endhighlight %}
+{% highlight python %}
+'''This is a string
+that spans two lines.'''
+{% endhighlight %}
 
 But I just learned recently that it can also be achieved like so.
 
-    {% highlight python %}
-    ("This is another string "
-    "that is declared on two lines.")
-    {% endhighlight %}
+{% highlight python %}
+("This is another string "
+"that is declared on two lines.")
+{% endhighlight %}
 
 So what is the difference? In a docstring, all newlines and whitespace are
 preserved, in the second declaration, only the parts inside the quotes are 
 rendered into the final string. Therefore, the first string when printed out
 looks like.
 
-    This is a string
-    that spans two lines.
+This is a string
+that spans two lines.
 
 While the second will simply be
 
-    This is another string that is declared on two lines.
+This is another string that is declared on two lines.
 
 If you don't want the newlines to show up as-is, the second type of declaration
 could be very useful.
@@ -152,13 +152,13 @@ mathematical concept of a set. It is an unordered container with unique elements
 A frozenset has the same interface as a set, but is immutable, like a tuple.
 A set and a frozenset are declared like the following.
 
-    {% highlight python %}
-    # A set
-    {'a','b','c'}
-    #A frozenset
-    frozenset({'a','b','c'}) 
-    # the argument to frozenset can be any iterable, including a list or tuple
-    {% endhighlight %}
+{% highlight python %}
+# A set
+{'a','b','c'}
+#A frozenset
+frozenset({'a','b','c'}) 
+# the argument to frozenset can be any iterable, including a list or tuple
+{% endhighlight %}
 
 What is the usefulness of a set? The main advantages of a set are that there
 are no duplicates, and that lookups can be done in constant time. For example,
@@ -166,25 +166,25 @@ let's say that you have a very long string of words separated by newlines, and
 you want to find out whether each word in a list of words was contained in that
 string. How would you accomplish this? The first thing you might try is.
 
-    {% highlight python %}
-    contained = [(word in long_string) for word in word_list]
-    {% endhighlight %}
+{% highlight python %}
+contained = [(word in long_string) for word in word_list]
+{% endhighlight %}
 
 But this is not very efficient, because you have to go searching in the string
 every single time. Now what if we first split the string into a list?
 
-    {% highlight python %}
-    long_string_list = long_string.split()
-    contained = [(word in long_string_list) for word in word_list]
-    {% endhighlight %}
+{% highlight python %}
+long_string_list = long_string.split()
+contained = [(word in long_string_list) for word in word_list]
+{% endhighlight %}
 
 This is also not quite so efficient, because looking up an item in a list still
 takes O(n) time. Now, what if we used a set?
 
-    {% highlight python %}
-    long_string_set = set(long_string.split())
-    contained = [(word in long_string_set) for word in word_list]
-    {% endhighlight %}
+{% highlight python %}
+long_string_set = set(long_string.split())
+contained = [(word in long_string_set) for word in word_list]
+{% endhighlight %}
 
 Looking up a word in a set happens in constant time, so this method is very
 efficient. Now of course, splitting a string into a list and turning a list 
