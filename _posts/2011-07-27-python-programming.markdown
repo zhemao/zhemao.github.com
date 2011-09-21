@@ -23,7 +23,7 @@ the results of `genstr`. The most obvious way would be like so.
 {% highlight python %}
 mystr = ''
 for randstr in genstr(n):
-	mystr += randstr
+    mystr += randstr
 {% endhighlight %}
 
 But this is very inefficient for the reason that a new string has to be created
@@ -50,7 +50,7 @@ import io
 sio = io.StringIO()
 
 for randstr in gen(n):
-	sio.write(randstr)
+    sio.write(randstr)
 
 mystr = sio.getvalue()
 {% endhighlight %}
@@ -66,14 +66,14 @@ attribute looks like the following.
 
 {% highlight python %}
 class A:
-	a = 'blah'
+    a = 'blah'
 {% endhighlight %}
 
 A default parameter looks like this.
 	
 {% highlight python %}
 def something(a = 'blah'):
-	pass
+    pass
 {% endhighlight %}
 
 Class attributes are bound when the class is created, and default parameters
@@ -84,7 +84,7 @@ function. This means that both of the following should be avoided.
 
 {% highlight python %}
 class A:
-	a = []
+    a = []
 
 b = A()
 c = A()
@@ -92,8 +92,8 @@ b.a.append('blah')
 # now b.a and c.a are both ['blah']
 
 def something(a = []):
-	a.append('blah')
-	return a
+    a.append('blah')
+    return a
 
 # calling something without arguments 5 times will cause 'blah' to show up
 # 5 times in the returned list
@@ -103,13 +103,13 @@ Instead, do it like this.
 
 {% highlight python %}
 class A:
-	def __init__(self):
-		self.a = []
-		self.a.append('blah')
+    def __init__(self):
+        self.a = []
+        self.a.append('blah')
 
 def something(a = None):
-	if a==None: a = []
-	a.append('blah')
+    if a==None: a = []
+    a.append('blah')
 {% endhighlight %}
 
 ## Multiline Strings
@@ -134,12 +134,12 @@ preserved, in the second declaration, only the parts inside the quotes are
 rendered into the final string. Therefore, the first string when printed out
 looks like.
 
-This is a string
-that spans two lines.
+	This is a string
+	that spans two lines.
 
 While the second will simply be
 
-This is another string that is declared on two lines.
+	This is another string that is declared on two lines.
 
 If you don't want the newlines to show up as-is, the second type of declaration
 could be very useful.
