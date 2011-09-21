@@ -20,21 +20,21 @@ method `genstr` which takes as input an integer n and yields a random string on
 each iteration, stopping after n number of iterations. How would one concatenate
 the results of `genstr`. The most obvious way would be like so.
 
-	{% highlight python %}
-    mystr = ''
-	for randstr in genstr(n):
-		mystr += randstr
-	{% endhighlight %}
+{% highlight python %}
+mystr = ''
+for randstr in genstr(n):
+	mystr += randstr
+{% endhighlight %}
 
 But this is very inefficient for the reason that a new string has to be created
 and assigned to mystr on each loop. What is the most efficient method of 
 concatenation? List comprehension.
 
-    {% highlight python %}
-	mystr = ''.join([s for s in genstr(n)])
-	# or alternatively
-	mystr = ''.join(s for s in genstr(n))
-    {% endhighlight %}
+{% highlight python %}
+mystr = ''.join([s for s in genstr(n)])
+# or alternatively
+mystr = ''.join(s for s in genstr(n))
+{% endhighlight %}
 
 The second is actually a generator comprehension, not a list comprehension. 
 They are more memory efficient (as you don't have to pre-allocate the entire
@@ -44,16 +44,16 @@ comprehension is not ideal, because your inner loop might be slightly more
 complicated than just returning the yielded value. In that case, the next
 best way is to use a StringIO object, like so.
 
-	{% highlight python %}
-    import io
+{% highlight python %}
+import io
 
-	sio = io.StringIO()
+sio = io.StringIO()
 
-	for randstr in gen(n):
-		sio.write(randstr)
+for randstr in gen(n):
+	sio.write(randstr)
 
-	mystr = sio.getvalue()
-	{% endhighlight %}
+mystr = sio.getvalue()
+{% endhighlight %}
 
 *Attribution* - this information was taken from an article written by 
 [Oliver Crow](http://www.skymind.com/~ocrow/python_string/).
