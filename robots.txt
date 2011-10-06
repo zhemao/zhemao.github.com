@@ -1,5 +1,4 @@
 User-agent: *
-
 Disallow: /newpost.sh
 Disallow: /css
 Disallow: /js
