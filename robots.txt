@@ -1,5 +1,8 @@
 User-agent: *
-Disallow: /templates
-Disallow: /markdown
+
 Disallow: /newpost.sh
+Disallow: /css
+Disallow: /js
+Disallow: /images
+Disallow: /CNAME
 
