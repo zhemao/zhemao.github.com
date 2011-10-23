@@ -40,7 +40,7 @@ Gedit, Vim, Emacs, Git, Mercurial, GCC, Make, GDB, Valgrind, Eclipse
 
 ## Frameworks and Libraries
 
-Django, web.py, Flask, Sinatra, jQuery, Arduino
+Django, web.py, Flask, Tornado, Libevent, Sinatra, jQuery, Arduino
 
 # Work Experience
 
