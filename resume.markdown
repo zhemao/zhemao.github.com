@@ -5,9 +5,9 @@ layout: resume
 
 <div id="name">Zhehao Mao</div>
 <div class="contact-info">
-1915 Lerner Hall • 2920 Broadway • New York, NY 10027
-(843) 819-9406 • zm2169@columbia.edu
-http://zhehaomao.com • https://github.com/zhemao
+1915 Lerner Hall • 2920 Broadway • New York, NY 10027<br/>
+(843) 819-9406 • zm2169@columbia.edu<br/>
+http://zhehaomao.com • https://github.com/zhemao<br/>
 </div>
 
 # Education 
