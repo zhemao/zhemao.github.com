@@ -7,6 +7,7 @@ layout: resume
 <div class="contact-info">
 1915 Lerner Hall • 2920 Broadway • New York, NY 10027
 (843) 819-9406 • zm2169@columbia.edu
+http://zhehaomao.com • https://github.com/zhemao
 </div>
 
 # Education 
