@@ -7,15 +7,15 @@ layout: resume
 
 ## Columbia Spectator Publishing Company
 
-### Associate Web Developer, January 2011 - present
+### Deputy Director of Operations, January 2011 - present
 
  * Working on making website infrastructure more secure
  * Migrated website code to git repository
  * Worked on redesign for the website of the Eye, the Spectator's weekly 
    magazine
- * Mined data for the housing calculator application for the Shaft, a Spectator-
-   sponsored blog covering the undergraduate housing application process at 
-   Columbia
+ * Mined data for the housing calculator application for the Shaft, a 
+   Spectator-sponsored blog covering the undergraduate housing application 
+   process at Columbia
 
 ## Science Applications International Corporation
 
