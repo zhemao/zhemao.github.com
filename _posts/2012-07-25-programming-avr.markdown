@@ -71,7 +71,7 @@ the programmer, in this case ArduinoISP. The -b flag specifies the USB baud
 rate, which is 19200 Bd for the Arduino. And the -U flag just tells avrdude 
 what file to program onto the microcontroller.
 
-If you are successful, you should see something like [this](http://www.youtube.com/watch?v=-IjRGw39Iek&feature=plcp)
+If you are successful, you should see something like [this](http://www.youtube.com/watch?v=-IjRGw39Iek&feature=plcp).
 
 # Attributions
 
