@@ -74,7 +74,7 @@ what file to program onto the microcontroller.
 If you are successful, you should see something like this
 
 <iframe width="560" height="315" src="http://www.youtube.com/embed/-IjRGw39Iek" 
-    frameborder="0" allowfullscreen="allowfullscreen"/>
+    frameborder="0" allowfullscreen="allowfullscreen"></iframe>
 
 # Attributions
 
