@@ -80,3 +80,13 @@ ArduinoISP instructions from [Arduino website](http://arduino.cc/en/Tutorial/Ard
 Code and compilation instructions by [Limor Fried](http://www.ladyada.net/learn/proj1/blinky.html) (AKA Lady Ada).
 
 Programmer instructions from [Kurt T](http://www.openhardwarehub.com/projects/43-Scavenger-Hunt-Beacon-Decoder-and-AVR-Programmer).
+
+# Update
+
+I've recently discovered that you can use avrdude to upload the hex file to the
+microcontroller on the arduino itself through the arduino bootloader. For
+instance, on an arduino uno, you could do the following
+
+    avrdude -p m328p -P /dev/ttyACM0 -c arduino -b 115200 -U flash:w:ledblink.hex
+
+The github repository has been update with these as the defaults.
