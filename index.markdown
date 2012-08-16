@@ -37,7 +37,7 @@ and [Bitbucket](https://bitbucket.org/zhemao).
 
 ## Random Links
 
-* [My Resume](resume.pdf)
+* [My Resume](https://github.com/downloads/zhemao/zhemao.github.com/resume.pdf)
 * [Random HTML5/JS Experimentation](html5/)
 
 The information on this page and in the blog posts are Copyright Zhehao Mao.
