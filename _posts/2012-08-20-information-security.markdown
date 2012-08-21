@@ -8,7 +8,7 @@ layout: post
 ## Steps you can take to make your electronic life more secure
 
 Most of you have probably heard about such recent IT security boondoggles as
-the server break-ins at LinkedIn, Last.fm as well as the truly disastrous 
+the server break-ins at LinkedIn and Last.fm as well as the truly disastrous 
 [hijacking](http://www.emptyage.com/post/28679875595/yes-i-was-hacked-hard)
 of Wired reporter Mat Honan's iCloud, Gmail, and Twitter accounts. 
 
@@ -23,12 +23,11 @@ potential damage of such electronic attacks.
 In light of these recent events, I thought I would share some of the steps I 
 take to make sure that my personal information and communications are secure.
 
-Disclaimer: Though I am quite knowledgable about computers and technology, 
-I am by no means a computer security expert, so take everything I say here with
-a grain of salt. These are just some of the security habits I practice. I have
-tried to order my suggestions here from simple and urgently necessary to complex
-and probably unnecessarily paranoid. It's up to you to decide whether they are
-worth following.  
+**Disclaimer:** Though I am quite knowledgable about computers and technology, 
+I am by no means a computer security expert. These are just some of the 
+security habits I practice. I have tried to order my suggestions here from 
+simple and urgently necessary to complex and probably unnecessarily paranoid. 
+It's up to you to decide whether they are worth following.  
 
 ## 1. Always log in through HTTPS
 
@@ -42,12 +41,13 @@ Logging in over HTTP also exposes you to man-in-the-middle attacks, in which
 an attacker presents you with a webpage that looks like the legitimate website's
 login page, but which is actually served from a webserver owned by the attacker.
 
-To fix these vulnerabilities in HTTP, a new protocol known as HTTP Secure, or
-HTTPS, was created. HTTPS tunnels HTTP traffic over a protocol known as Secure
-Sockets Layer, or SSL, which ensures that all traffic between your browser and 
-the server is strongly encrypted. In addition, every website that uses HTTPS is 
-assigned an SSL certificate, which your browser uses to verify the identity of 
-the website. This protects against man-in-the-middle attacks.
+The second protocol of the world wide web fixes the vulnerabilities in HTTP.
+This protocol is known as HTTP Secure, or HTTPS. HTTPS tunnels HTTP traffic 
+over a protocol known as Secure Sockets Layer, or SSL, which ensures that all 
+traffic between your browser and the server is strongly encrypted. In addition, 
+every website that uses HTTPS is assigned an SSL certificate, which your 
+browser uses to verify the identity of the website. This protects against 
+man-in-the-middle attacks.
 
 Therefore, if you are logging into an online account, make sure that the login 
 page is sent to you over HTTPS. This is easy to determine, as the url in the 
@@ -55,7 +55,7 @@ url bar should begin with "https://". Also, make sure that the security
 certificate is valid and is assigned to the site you are actually trying to 
 log in to. To do this, look at the icon to the left of the url in the
 url bar. If it is a little lock, possibly with the site's name next to it, 
-you're golden. 
+the SSL certificate has been verified by your browser and so can be trusted.
 
 If the page was not sent to you over HTTPS, you can probably find the HTTPS 
 page by simply changing the url scheme from "http://" to "https://". 
@@ -97,15 +97,18 @@ using the following command
 
     head -c 8 /dev/urandom | base64
 
+Change the argument to the -c option to adjust the length of the generated
+password. 
+
 ## 3. Use Google Two-Factor Authentication
 
 Most sites allow you to use your email address to reset your password if you
 forget it. Therefore, it is important to make sure your email account is extra
 secure. Fortunately for Gmail users, Google offers two-factor authentication
-for your Google account. How two-factor authentication works is that you enter
-your Google account password in as usual, and then Google sends a one-time
-PIN to your phone. You will then be required to enter this PIN on the next
-form in order to log in. You can also set the computers you own as trusted
+for your Google account. The way two-factor authentication works is that you 
+enter your Google account password in as usual, and then Google sends a 
+one-time PIN to your phone. You will then be required to enter this PIN on the 
+next form in order to log in. You can also set the computers you own as trusted
 computers, in which case Google will only ask for the secondary login once
 every 30 days. If you link third party clients to your google account (such
 as email or chat clients), you can set application-specific passwords for them.
@@ -125,7 +128,7 @@ USB and run the following command
     dd if=/dev/urandom of=/dev/sda bs=1M
 
 Where /dev/sda can be replaced with whatever drive or partition you want to
-erase. If you don't have a Linux live USB handy, or aren't familiar with the
+erase. If you don't have a Linux live USB handy or aren't familiar with the
 command line, you should do some searching for the method that will work best
 for you.
 
@@ -141,10 +144,10 @@ to safeguard the data stored on one's computer from theft.
 
 Once criminals steal your computer, they can pull all of your personal data off 
 of it. You might think you're safe because you use a password to log in to your 
-computer, but if the data is unencrypted, the thieves can always bypass your 
+computer, but, if the data is unencrypted, the thieves can always bypass your 
 operating system's file permissions to obtain the data.
 
-The best way to avoid this problem of course is to make sure your computer or
+The best way to avoid this problem, of course, is to make sure your computer or
 phone is not lost or stolen. But you can also mitigate the potential fallout
 from computer theft by encrypting your hard drive. 
 
@@ -166,8 +169,8 @@ using Windows and therefore don't have any), [Truecrypt](http://www.truecrypt.or
 is a pretty good cross-platform software package for full-disk encryption.
 
 I don't know much about disk encryption on mobile phones, but I've heard that
-Android 3 "Honeycomb" are able to use LUKS encryption. iOS apparently has 
-full disk encryption by default, but its disk encryption implementation is
+Android 3 "Honeycomb" and above are able to use LUKS encryption. iOS apparently 
+has full disk encryption by default, but its disk encryption implementation is
 [completely broken and useless](http://www.alertboot.com/blog/blogs/endpoint_security/archive/2010/05/28/iphone-encryption-is-for-naught-under-linux.aspx).
 
 ## 6. Encrypt your communications using PGP
@@ -215,4 +218,3 @@ If you want to use PGP from the Gmail web interface, you will have to install
 a PGP plugin for your browser. There's a PGP plugin for firefox called
 [FireGPG](http://getfiregpg.org/s/home) and one for Chrome called 
 [WebPG](https://chrome.google.com/webstore/detail/hhaopbphlojhnmbomffjcbnllcenbnih).
-
