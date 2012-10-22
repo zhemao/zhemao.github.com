@@ -28,7 +28,8 @@ Charleston, SC, but now reside in New York City and Long Island. Computer
 programming and electronics are my main hobbies, as well as my calling in life. 
 I am proficient in Python, C, C++, and Java and familiar with Ruby, Perl and 
 Javascript. You can find some of my code on [Github](https://github.com/zhemao) 
-and [Bitbucket](https://bitbucket.org/zhemao).
+and [Bitbucket](https://bitbucket.org/zhemao). I have some videos of my
+hardware projects on [Youtube](http://www.youtube.com/zhemaoce).
 
 ## Blog Pages
 {% for post in site.posts %}
