@@ -73,6 +73,9 @@ what file to program onto the microcontroller.
 
 If you are successful, you should see something like [this](http://www.youtube.com/watch?v=-IjRGw39Iek&feature=plcp).
 
+<iframe width="560" height="315" src="http://www.youtube.com/embed/-IjRGw39Iek" 
+    frameborder="0">Youtube Embedding Disabled</iframe>
+
 # Attributions
 
 ArduinoISP instructions from [Arduino website](http://arduino.cc/en/Tutorial/ArduinoISP). 
