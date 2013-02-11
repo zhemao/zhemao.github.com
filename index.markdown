@@ -16,8 +16,8 @@ layout: default
 	* Anything related to Science or Technology
 	* Jazz Music
 
-[![Google Plus](images/google_plus_32.png)](https://plus.google.com/104423634081365897250/about)
 [![Github](images/github_32.png)](https://github.com/zhemao)
+[![Youtube](http://s.ytimg.com/yt/img/creators_corner/YouTube/youtube_32x32.png)](http://youtube.com/zhemaoce)
 
 
 ## Brief Bio
