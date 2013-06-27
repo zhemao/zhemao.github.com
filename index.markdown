@@ -3,31 +3,11 @@ title: Main Page
 layout: default
 ---
 
-## About Me
+I am a Computer Engineering major at Columbia University. 
+My interests are in digital hardware design, FPGA prototyping, embedded
+systems, Linux kernel hacking, systems programming, and parallel computing.
 
-* Name: Zhehao Mao
-* Email: zhehao.mao@gmail.com
-* School: Columbia University School of Engineering and Applied Sciences
-* Major: Computer Engineering
-* Interests:
-	* Computer Programming
-	* Free and Open Source Software
-	* Electronics and Circuit Design
-	* Anything related to Science or Technology
-	* Jazz Music
-
-[![Github](images/github_32.png)](https://github.com/zhemao)
-[![Youtube](http://s.ytimg.com/yt/img/creators_corner/YouTube/youtube_32x32.png)](http://youtube.com/zhemaoce)
-
-
-## Brief Bio
-
-My name is Zhehao Mao, but everyone calls me Howie. I am a computer engineering major in the School of 
-Engineering and Applied Science at Columbia University. I grew up in 
-Charleston, SC, but now reside in New York City and Long Island. Computer 
-programming and electronics are my main hobbies, as well as my calling in life. 
-I am proficient in Python, C, C++, and Java and familiar with Ruby, Perl and 
-Javascript. You can find some of my code on [Github](https://github.com/zhemao) 
+You can find some of my code on [Github](https://github.com/zhemao) 
 and [Bitbucket](https://bitbucket.org/zhemao). I have some videos of my
 hardware projects on [Youtube](http://www.youtube.com/zhemaoce).
 
@@ -40,9 +20,3 @@ hardware projects on [Youtube](http://www.youtube.com/zhemaoce).
 
 * [My Resume](https://bitbucket.org/zhemao/resume/downloads/resume.pdf)
 * [Random HTML5/JS Experimentation](html5/)
-
-The information on this page and in the blog posts are Copyright Zhehao Mao.
-
-Site layout, including html templates, CSS stylesheets, and Javascript code
-are released under a BSD License, reproduced [here](/bsd-license.txt). The HTML5
-demos are also released under a BSD License. 
