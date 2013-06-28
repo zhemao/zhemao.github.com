@@ -27,11 +27,11 @@ li ul {
 }
 
 #header{
-  background-color:#00c;
+  background-color:#f0f0f0;
   padding: 5px;
   padding-left: 20px;
   margin: 0px;
-  color: #ccc;
+  text-align: center;
 }
 
 #footer, footer{
@@ -47,8 +47,3 @@ img {
   height: 100%;
   background-color: #fff;
 }
-
-body{
-  background-color: #ddd;
-}
-
