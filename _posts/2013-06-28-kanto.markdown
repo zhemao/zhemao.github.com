@@ -1,0 +1,50 @@
+---
+title: Kanto Audio Player
+layout: default
+category: project
+---
+
+Our group's final project for Columbia's CSEE 4840 Embedded Systems class.
+Kanto is an audio player and visualizer implemented on an Altera DE2 FPGA
+development board. The player consists of a digital hardware design implemented 
+in VHDL and embedded microcontroller code implemented in C. 
+
+Kanto will read raw CD-quality audio data off of an SD card and play it on
+the DE2's audio codec. It will also take groups of samples, compute the FFT,
+and display the resulting frequency bins on a VGA monitor.
+
+The hardware takes care of time-sensitive tasks like reading from the SD card,
+computing the FFT, and driving the visualization.
+
+Software controls initialization and the user interface, which is a track
+menu at the top of the VGA display controlled by input from a PS/2 keyboard.
+
+My teammates on this project were Kavita Jain-Cocks, Amrita Mazumdar,
+Darien Nurse, and Jonathan Yu.
+
+<p><iframe width="560" height="315" src="//www.youtube.com/embed/g-Gh5SFSpzw" 
+		frameborder="0" allowfullscreen="true">
+</iframe></p>
+
+An early iteration of our design. There is no keyboard input at this stage.
+The only control is a single switch on the board, which causes the playback to 
+pause or continue. The audio starts playing from the beginning of the SD card
+as soon as the compiled HDL description is flashed and cannot be restarted,
+rewound, fast-forwarded, or controlled in any way other than play/pause.
+This first iteration is also notable for containing no software whatsoever.
+All of the control logic at this point was implemented in VHDL.
+
+<p><iframe src="http://player.vimeo.com/video/68397395" width="500" height="281" 
+	frameborder="0" allowFullScreen="true">
+</iframe></p>
+
+The final, polished version of our design, as recorded by our professor on
+demo day. We changed the visualization, displaying only the first 64 frequency
+bins (as that roughly corresponded to the range of human hearing), and added
+software to implement a fancier UI, which allowed track selection, fast-forward,
+and rewind using keyboard input. As you can see, I'm quite partial to the song
+"Moanin'" by Art Blakey and the Jazz Messengers, despite having listened to it
+over and over again in the lab while debugging the audio and SD card.
+
+[Final Report](http://www.cs.columbia.edu/~sedwards/classes/2013/4840/reports/kanto.pdf)
+[Code](https://github.com/kanto-player/kanto)

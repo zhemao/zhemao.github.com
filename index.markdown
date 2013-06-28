@@ -16,6 +16,11 @@ hardware projects on [Youtube](http://www.youtube.com/zhemaoce).
 * [{{post.title}}]({{post.url}})
 {% endfor %}
 
+## Projects
+{% for post in site.categories.project %}
+* [{{post.title}}]({{post.url}})
+{% endfor %}
+
 ## Random Links
 
 * [My Resume](https://bitbucket.org/zhemao/resume/downloads/resume.pdf)
