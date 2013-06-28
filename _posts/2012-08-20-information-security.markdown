@@ -1,6 +1,7 @@
 ---
 title: Information Security in the Modern Age
 layout: default
+category: blog
 ---
 
 # Information Security in the Modern Age

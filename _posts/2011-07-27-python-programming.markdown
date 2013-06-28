@@ -1,6 +1,7 @@
 ---
 title: Things Every Python Programmer Should Know but Generally Don't
 layout: default 
+category: blog
 ---
 
 Python is a really great programming language, and one of the many reasons

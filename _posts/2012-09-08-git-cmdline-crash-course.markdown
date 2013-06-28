@@ -1,6 +1,7 @@
 ---
 title: A Crash Course in Git and the UNIX Command Line
 layout: default
+category: blog
 ---
 
 ## Installation

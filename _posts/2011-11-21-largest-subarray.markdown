@@ -1,6 +1,7 @@
 ---
 title: Largest Subarray Problem
 layout: default
+category: blog
 ---
 
 # Solution to the Largest Subarray Problem

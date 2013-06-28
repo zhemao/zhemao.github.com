@@ -1,6 +1,7 @@
 ---
 layout: default 
 title: Useful Websites for Developers
+category: blog
 ---
 
 I am collecting a list of interesting and useful online resources for developers. 

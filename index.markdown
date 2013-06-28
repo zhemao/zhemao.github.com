@@ -12,7 +12,7 @@ and [Bitbucket](https://bitbucket.org/zhemao). I have some videos of my
 hardware projects on [Youtube](http://www.youtube.com/zhemaoce).
 
 ## Blog Pages
-{% for post in site.posts %}
+{% for post in site.categories.blog %}
 * [{{post.title}}]({{post.url}})
 {% endfor %}
 
