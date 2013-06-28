@@ -1,6 +1,6 @@
 ---
 title: A Crash Course in Git and the UNIX Command Line
-layout: post
+layout: default
 ---
 
 ## Installation

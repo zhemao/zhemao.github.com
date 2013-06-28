@@ -1,6 +1,6 @@
 ---
 title: Playing Audio from the Arduino
-layout: post
+layout: default
 ---
 
 Recently, I've been experimenting with playing audio from my Arduino.

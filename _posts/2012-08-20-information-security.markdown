@@ -1,6 +1,6 @@
 ---
 title: Information Security in the Modern Age
-layout: post
+layout: default
 ---
 
 # Information Security in the Modern Age

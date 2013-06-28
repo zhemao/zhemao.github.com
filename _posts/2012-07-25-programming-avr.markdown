@@ -1,6 +1,6 @@
 ---
 title: Programming an AVR Microcontroller
-layout: post
+layout: default
 ---
 
 This post details the process of compiling C code into an AVR hex file and
