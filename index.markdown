@@ -1,5 +1,4 @@
 ---
-title: Howard Mao
 layout: default
 ---
 

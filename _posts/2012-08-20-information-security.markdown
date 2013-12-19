@@ -4,8 +4,6 @@ layout: default
 category: blog
 ---
 
-# Information Security in the Modern Age
-
 ## Steps you can take to make your electronic life more secure
 
 Most of you have probably heard about such recent IT security boondoggles as

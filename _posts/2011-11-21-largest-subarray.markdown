@@ -4,8 +4,6 @@ layout: default
 category: blog
 ---
 
-# Solution to the Largest Subarray Problem
-
 Today I was studying some CS Interview Questions in preparation for an on-site
 interview. I came across one question which was particularly interesting. 
 
