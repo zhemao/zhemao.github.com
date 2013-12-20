@@ -1,0 +1,30 @@
+---
+layout: default
+---
+
+<p>
+I am a recent graduate of Columbia University, where I studied Computer Engineering.
+My interests are in digital hardware design, FPGA prototyping, embedded
+systems, Linux kernel hacking, systems programming, and parallel computing.
+</p>
+
+<p>
+You can find some of my code on <a href="https://github.com/zhemao">Github</a>
+and <a href="https://bitbucket.org/zhemao"/>Bitbucket</a>. I have some videos
+of my hardware projects on <a href="http://www.youtube.com/zhemaoce">Youtube</a>.
+</p>
+
+<h2>Blog Pages</h2>
+
+<ul class="front-page-list">
+{% for post in site.categories.blog %}
+<li><a href="{{post.url}}"}}>{{post.title}}</a>
+{% endfor %}
+</ul>
+
+<h2>Projects</h2>
+<ul class="front-page-list">
+{% for post in site.categories.project %}
+<li><a href="{{post.url}}"}}>{{post.title}}</a>
+{% endfor %}
+</ul>
