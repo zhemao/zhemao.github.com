@@ -13,11 +13,11 @@ different sources online.
 
 Make sure you have the following pieces of software installed.
 
-    arduino
-    make
-    avrdude
-    avr-gcc
-    avr-binutils
+ * arduino
+ * make
+ * avrdude
+ * avr-gcc
+ * avr-binutils
 
 # Step 2: Setting up Arduino
 
