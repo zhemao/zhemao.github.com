@@ -241,7 +241,7 @@ next(gen) # yields 1
 gen.send(3) # yields 4
 {% endhighlight %}
 
-This allows the generator to function as a coroutine. It's usefulness is 
+This allows the generator to function as a coroutine. Its usefulness is 
 probably limited, but pretty cool nonetheless.
 
 But the real power of generators is that they allow you to write text 
