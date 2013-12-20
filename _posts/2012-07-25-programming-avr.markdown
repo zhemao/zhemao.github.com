@@ -26,7 +26,7 @@ sketch. This should be under File -> Examples -> ArduinoISP.
 
 # Step 3: Compiling and Linking the Code
 
-Check out the source code from https://bitbucket.org/zhemao/ledblink
+Check out the source code from [https://bitbucket.org/zhemao/ledblink](https://bitbucket.org/zhemao/ledblink)
 
     git clone https://bitbucket.org/zhemao/ledblink.git
 
@@ -93,4 +93,4 @@ instance, on an arduino uno, you could do the following
 
     avrdude -p m328p -P /dev/ttyACM0 -c arduino -b 115200 -U flash:w:ledblink.hex
 
-The github repository has been update with these as the defaults.
+The git repository has been update with these as the defaults.
