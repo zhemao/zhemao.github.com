@@ -4,8 +4,6 @@ layout: default
 category: blog
 ---
 
-## Steps you can take to make your electronic life more secure
-
 Most of you have probably heard about such recent IT security boondoggles as
 the server break-ins at LinkedIn and Last.fm as well as the truly disastrous 
 [hijacking](http://www.emptyage.com/post/28679875595/yes-i-was-hacked-hard)
@@ -65,6 +63,11 @@ If you are using Facebook or Twitter, there are settings you can enable to
 make sure the site uses HTTPS everywhere. On Twitter, you can find the setting
 under Settings -> Account -> HTTPS only. On Facebook, the option is under
 Account Settings -> Security -> Secure Browsing. 
+
+*Update:* I have now started using the EFF's
+[HTTPS Everywhere](https://www.eff.org/https-everywhere) browser extension,
+which will make sure I am using HTTPS on most common sites. I highly
+recommend it.
 
 ## 2. Use random passwords and a password manager
 
