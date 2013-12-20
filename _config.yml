@@ -1,2 +1,2 @@
 pygments: true
-exclude: [newpost.sh, editpost.sh]
+exclude: [newpost.sh]
