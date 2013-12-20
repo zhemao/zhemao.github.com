@@ -22,7 +22,9 @@ Make sure you have the following pieces of software installed.
 # Step 2: Setting up Arduino
 
 Plug the Arduino into your computer and compile and upload the ArduinoISP
-sketch. This should be under File -> Examples -> ArduinoISP.
+sketch.
+
+This should be under File -> Examples -> ArduinoISP.
 
 # Step 3: Compiling and Linking the Code
 
@@ -34,8 +36,8 @@ Compile the ledblink.c file into an object file using avr-gcc.
 
     avr-gcc -c -Os -Wall -DF_CPU=8000000 -mmcu=atmega328 ledblink.c
 
-Note that -DF\_CPU is just passing in a preprocessor variable. You won't have
-to do this if you are writing your own code. The -Os optimization flag tells
+Note that `-DF_CPU` flag is just passing in a preprocessor variable. You won't have
+to do this if you are writing your own code. The `-Os` optimization flag tells
 the compiler to optimize for a smaller executable. This is helpful when 
 writing to a small microcontroller ROM.
 
