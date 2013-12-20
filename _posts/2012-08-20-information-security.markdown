@@ -66,8 +66,8 @@ Account Settings -> Security -> Secure Browsing.
 
 *Update:* I have now started using the EFF's
 [HTTPS Everywhere](https://www.eff.org/https-everywhere) browser extension,
-which will make sure I am using HTTPS on most common sites. I highly
-recommend it.
+which will make sure I am using HTTPS when I visit common sites like
+Facebook, Google, etc. I highly recommend it.
 
 ## 2. Use random passwords and a password manager
 
