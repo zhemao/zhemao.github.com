@@ -4,8 +4,8 @@ layout: default
 category: project
 ---
 
-Our group's final project for Columbia's CSEE 4840 Embedded Systems class.
-Kanto is an audio player and visualizer implemented on an Altera DE2 FPGA
+Kanto was our group's final project for Columbia's CSEE 4840 Embedded Systems class.
+It is an audio player and visualizer implemented on an Altera DE2 FPGA
 development board. The player consists of a digital hardware design implemented 
 in VHDL and embedded microcontroller code implemented in C. 
 
