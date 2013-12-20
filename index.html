@@ -18,13 +18,14 @@ of my hardware projects on <a href="http://www.youtube.com/zhemaoce">Youtube</a>
 
 <ul class="front-page-list">
 {% for post in site.categories.blog %}
-<li><a href="{{post.url}}"}}>{{post.title}}</a>
+<li><span class="blog-date">{{post.date | date_to_string }} </span>
+    <a href="{{post.url}}"}}>{{post.title}}</a></li>
 {% endfor %}
 </ul>
 
 <h2>Projects</h2>
 <ul class="front-page-list">
 {% for post in site.categories.project %}
-<li><a href="{{post.url}}"}}>{{post.title}}</a>
+<li><a href="{{post.url}}"}}>{{post.title}}</a></li>
 {% endfor %}
 </ul>
