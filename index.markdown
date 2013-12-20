@@ -2,7 +2,7 @@
 layout: default
 ---
 
-I am a Computer Engineering major at Columbia University. 
+I am a recent graduate of Columbia University, where I studied Computer Engineering.
 My interests are in digital hardware design, FPGA prototyping, embedded
 systems, Linux kernel hacking, systems programming, and parallel computing.
 
