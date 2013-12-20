@@ -4,14 +4,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size:36px;
+  font-size: 36px;
   margin: 0px;
   padding: 5px;
 }
+
 h2 {
-  font-size:24px;
-  margin-top:10px;
-  margin-bottom:10px;
+  font-size: 24px;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
 #toplink {
@@ -31,9 +32,9 @@ iframe {
 }
 
 ul {
-  list-style-type:square;
-  padding:0px;
-  margin-left:10px;
+  list-style-type: square;
+  padding: 0px;
+  margin-left: 10px;
 }
 
 li {
@@ -45,7 +46,7 @@ li {
   list-style-type: none;
 }
 
-#header{
+#header {
   background-color:#f0f0f0;
   padding: 5px;
   padding-left: 20px;
@@ -53,15 +54,15 @@ li {
   text-align: center;
 }
 
-#footer, footer{
+#footer, footer {
   padding-left: 10px;
 }
 
 img {
-  margin:5px;
+  margin: 5px;
 }
 
-#container{
+#container {
   margin: 10px auto 10px auto;
   max-width: 1000px;
   height: 100%;
