@@ -49,10 +49,12 @@ Vector provides the following features over CUDA/OpenCL
 
 Vector uses a C-like syntax. So the following is a valid Vector program.
 
-    int vec_main() {
-        printf("Hello, World\n");
-        return 0;
-    }
+{% highlight c %}
+int vec_main() {
+    printf("Hello, World\n");
+    return 0;
+}
+{% endhighlight %}
 
 Note that unlike in C, we did not need to include "stdio.h", and the main
 function is named `vec_main` instead of main. In this post, I will focus on
@@ -62,7 +64,9 @@ the language features that make Vector different from C.
 
 Vector has rudimentary support for type inference. For instance,
 
-    i := 15;
+{% highlight c %}
+i := 15;
+{% endhighlight %}
 
 This declares `i` as an int and assigns 15 to it, without having to explicitly
 declare `i` as an integer. If you've ever used [Go](http://golang.org/) before,
@@ -71,28 +75,36 @@ this syntax should be familiar.
 One limitation is that Vector does not do automatic type promotion, so the
 following will not work.
 
-    i := 4;
-    j := i * 1.5;
+{% highlight c %}
+i := 4;
+j := i * 1.5;
+{% endhighlight %}
 
 Instead, you'd have to do the following
 
-    i := 4;
-    j := int(float(i) * 1.5);
+{% highlight c %}
+i := 4;
+j := int(float(i) * 1.5);
+{% endhighlight %}
 
 ### For loops
 
 Instead of needing explicit init, check, and increment statements like for
 loops in C, for loops in Vector uses ranges. So the following Vector...
 
-    for (i in 0:10:2) {
-        // do something
-    }
+{% highlight c %}
+for (i in 0:10:2) {
+    // do something
+}
+{% endhighlight %}
 
 ...is equivalent to the following C (well actually, C++).
 
-    for (int i = 0; i < 10; i += 2) {
-        // do something
-    }
+{% highlight c %}
+for (int i = 0; i < 10; i += 2) {
+    // do something
+}
+{% endhighlight %}
 
 Everything except the middle argument in a range and the colon preceding is
 optional, so the following ranges are equivalent.
@@ -106,23 +118,27 @@ optional, so the following ranges are equivalent.
 
 Vector arrays are like C arrays. However, Vector arrays are multi-dimensional.
 
-    // declare a 2D array with 3 rows and 2 columns
-    int arr[3, 2];
-    // assign into row 0, column 1
-    arr[0, 1] = 3;
+{% highlight c %}
+// declare a 2D array with 3 rows and 2 columns
+int arr[3, 2];
+// assign into row 0, column 1
+arr[0, 1] = 3;
+{% endhighlight %}
 
 Vector arrays are reference counted, so you can safely pass them into and out
 of functions without having to worry about freeing them.
 
-    float[] scale(float sc, float arr[])
-    {
-        float res[len(arr)];
+{% highlight c %}
+float[] scale(float sc, float arr[])
+{
+    float res[len(arr)];
 
-        for (i in 0:len(res))
-            res[i] = sc * arr[i];
+    for (i in 0:len(res))
+        res[i] = sc * arr[i];
 
-        return res;
-    }
+    return res;
+}
+{% endhighlight %}
 
 The built-in function `len(arr)` gives the size of the array `arr`. If it is a
 multi-dimensional array, you can give `len` an integer as the second argument
@@ -131,11 +147,13 @@ to find the length along that dimension.
 You can also use `for` loops to iterate over the elements of an array in a
 for-each type syntax.
 
-    arr := {0, 4, 1, 2};
+{% highlight c %}
+arr := {0, 4, 1, 2};
 
-    for (x in arr) {
-        // do something
-    }
+for (x in arr) {
+    // do something
+}
+{% endhighlight %}
 
 Note that array declarations can also be type-inferenced.
 
@@ -144,9 +162,11 @@ Note that array declarations can also be type-inferenced.
 Our first GPU construct. the syntax of `pfor` is identical to the range
 iteration `for`.
 
-    pfor (i in 0:1000) {
-        // do something
-    }
+{% highlight c %}
+pfor (i in 0:1000) {
+    // do something
+}
+{% endhighlight %}
 
 The difference is that `pfor` actually runs as a GPU kernel, and each iteration
 of the "loop" is run in parallel in a different GPU thread. Arrays can be
@@ -154,12 +174,14 @@ read and written to on the GPU. So, for instance, if you wanted to take the
 element-wise production of two arrays, you could do the following.
 
 
-    float[] vecmult(float a[], float b[])
-    {
-        float c[len(a)];
-        pfor (i in :len(a))
-            c[i] = a[i] * b[i];
-    }
+{% highlight c %}
+float[] vecmult(float a[], float b[])
+{
+    float c[len(a)];
+    pfor (i in :len(a))
+        c[i] = a[i] * b[i];
+}
+{% endhighlight %}
 
 Each scalar multiplication happens in a separate GPU thread.
 
@@ -172,15 +194,17 @@ The `map` function takes a function of one argument `f` and an array `a` and
 produces an array `b` in which `b[i] = f(a[i])`. So, for instance, to square
 each element of an array, we can do the following.
 
-    __device__ int square(int x)
-    {
-        return x * x;
-    }
+{% highlight c %}
+__device__ int square(int x)
+{
+    return x * x;
+}
 
-    int[] square_array(int arr[])
-    {
-        return @map(square, arr);
-    }
+int[] square_array(int arr[])
+{
+    return @map(square, arr);
+}
+{% endhighlight %}
 
 The function passed into `@map` must be declared with the `__device__` annotation
 so that it is compiled for the GPU.
@@ -190,15 +214,17 @@ the function to pairs of elements in the array, then pairs of the results of
 the first pass, and so on until there is a single result. This makes it useful
 for, say, taking the sum of an array.
 
-    __device__ int add(int x, int y)
-    {
-        return x + y;
-    }
+{% highlight c %}
+__device__ int add(int x, int y)
+{
+    return x + y;
+}
 
-    int sum(int arr[])
-    {
-        return @reduce(add, arr);
-    }
+int sum(int arr[])
+{
+    return @reduce(add, arr);
+}
+{% endhighlight %}
 
 The function passed to reduce must be commutative and associative, otherwise
 the result of the computation is not likely to be what you would expect.
@@ -208,59 +234,67 @@ the result of the computation is not likely to be what you would expect.
 Here's a demonstration of what Vector can do. The following is a Mandelbrot
 set generator that runs on the GPU.
 
-    __device__ uint8 mandelbrot(int xi, int yi, int xn, int yn,
-        float left, float right, float top, float bottom)
-    {
-        iter := 0;
+{% highlight c %}
 
-        x0 := left + (right - left) / float(xn) * float(xi);
-        y0 := bottom + (top - bottom) / float(yn) * float(yi);
-        z0 := #(x0, y0);
-        z := #(float(0), float(0));
+__device__ uint8 mandelbrot(int xi, int yi, int xn, int yn,
+    float left, float right, float top, float bottom)
+{
+    iter := 0;
 
-        while (iter < 255 && abs(z) < 2) {
-            z = z * z + z0;
-            iter++;
-        }
+    x0 := left + (right - left) / float(xn) * float(xi);
+    y0 := bottom + (top - bottom) / float(yn) * float(yi);
+    // construct complex numbers
+    z0 := #(x0, y0);
+    z := #(float(0), float(0));
 
-        return uint8(iter);
+    while (iter < 255 && abs(z) < 2) {
+        // look, we have native complex arithmetic
+        // no more cuAddf, cuMulf
+        z = z * z + z0;
+        iter++;
     }
 
-    void print_pgm(uint8 shades[], int width, int height)
-    {
-        printf("P2\n");
-        printf("%d %d\n", width, height);
-        printf("255\n");
+    return uint8(iter);
+}
 
-        for (y in 0:height) {
-            for (x in 0:width)
-                printf("%u ", shades[y, x]);
-            printf("\n");
-        }
+void print_pgm(uint8 shades[], int width, int height)
+{
+    /* see https://en.wikipedia.org/wiki/Portable_graymap#PGM_example */
+    printf("P2\n");
+    printf("%d %d\n", width, height);
+    printf("255\n");
+
+    for (y in 0:height) {
+        for (x in 0:width)
+            printf("%u ", shades[y, x]);
+        printf("\n");
+    }
+}
+
+int vec_main()
+{
+    img_height := 512;
+    img_width := 768;
+
+    uint8 shades[img_height, img_width];
+
+    left := float(-2.0);
+    right := float(1.0);
+    top := float(1.0);
+    bottom := float(-1.0);
+
+
+    pfor (yi in 0:img_height, xi in 0:img_width) {
+        shades[yi, xi] = mandelbrot(xi, yi, img_width, img_height,
+                            left, right, top, bottom);
     }
 
-    int vec_main()
-    {
-        img_height := 512;
-        img_width := 768;
+    print_pgm(shades, img_width, img_height);
 
-        uint8 shades[img_height, img_width];
+    return 0;
+}
 
-        left := float(-2.0);
-        right := float(1.0);
-        top := float(1.0);
-        bottom := float(-1.0);
-
-
-        pfor (yi in 0:img_height, xi in 0:img_width) {
-            shades[yi, xi] = mandelbrot(xi, yi, img_width, img_height,
-                                left, right, top, bottom);
-        }
-
-        print_pgm(shades, img_width, img_height);
-
-        return 0;
-    }
+{% endhighlight %}
 
 It outputs the image as a portable graymap file on standard output.
 Here is what the result looks like mapping 0 to black and 255 to blue.
