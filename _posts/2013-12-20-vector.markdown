@@ -1,0 +1,301 @@
+---
+title: The Vector Programming Language
+layout: default
+category: project
+---
+
+Vector was our team's final project for COMS 4115: Programming Languages and
+Translators. Vector is a high-level language for general-purpose GPU computing.
+Over the course of the semester, our team developed a compiler that compiled
+Vector into CUDA, which could then be compiled to run on Nvidia GPUs.
+My teammates were Zachary Newman, Sidharth Shanker, Jonathan Yu, and Harry Lee.
+
+## Rationale
+
+General-purpose computing on the GPU (GPGPU) has become more popular lately
+with the introduction of CUDA and OpenCL. They have been shown to perform
+quite well at compute-heavy tasks, such as running scientific simulations.
+However, writing GPU programs in CUDA or OpenCL require a lot of boilerplate,
+such as choosing the number of blocks and threads to launch and copying memory
+to and from the GPU. The reason for this low level of abstraction is that it
+allows programs to be tuned and optimized for specific GPU hardware.
+This fine control is necessary for high-performance computing, where it's
+important to squeeze out every last drop of performance, but it can be pretty
+daunting for programmers or researchers investigating GPGPU for the first time.
+At any rate, even an unoptimized GPU program will handily beat out equivalent
+CPU implementations at certain tasks.
+For this reason, we developed Vector to offer a higher level of abstraction
+than CUDA or OpenCL so that less experienced programmers could quickly write a
+parallel program and witness the power of the GPU.
+
+## Features
+
+Vector provides the following features over CUDA/OpenCL
+
+ * Automatic memory management
+   - Arrays in vector are reference-counted
+   - Arrays are allocated both on CPU and GPU
+   - Memory is automatically copied between CPU and GPU when needed
+ * The `pfor` statement
+   - Run code on GPU without having to define a separate kernel function
+   - Automatically detects what variables need to be passed in
+   - Number of blocks and threads/block chosen automatically
+ * Higher-order functions
+    - Specifically map and reduce
+    - Pass in a `__device__` function and an array.
+      Kernel will be generated for you.
+
+## Syntax
+
+Vector uses a C-like syntax. So the following is a valid Vector program.
+
+    int vec_main() {
+        printf("Hello, World\n");
+        return 0;
+    }
+
+Note that unlike in C, we did not need to include "stdio.h", and the main
+function is named `vec_main` instead of main. In this post, I will focus on
+the language features that make Vector different from C.
+
+### Type inference
+
+Vector has rudimentary support for type inference. For instance,
+
+    i := 15;
+
+This declares `i` as an int and assigns 15 to it, without having to explicitly
+declare `i` as an integer. If you've ever used [Go](http://golang.org/) before,
+this syntax should be familiar.
+
+One limitation is that Vector does not do automatic type promotion, so the
+following will not work.
+
+    i := 4;
+    j := i * 1.5;
+
+Instead, you'd have to do the following
+
+    i := 4;
+    j := int(float(i) * 1.5);
+
+### For loops
+
+Instead of needing explicit init, check, and increment statements like for
+loops in C, for loops in Vector uses ranges. So the following Vector...
+
+    for (i in 0:10:2) {
+        // do something
+    }
+
+...is equivalent to the following C (well actually, C++).
+
+    for (int i = 0; i < 10; i += 2) {
+        // do something
+    }
+
+Everything except the middle argument in a range and the colon preceding is
+optional, so the following ranges are equivalent.
+
+    0:5:1
+    0:5
+    :5:1
+    :5
+
+### Arrays
+
+Vector arrays are like C arrays. However, Vector arrays are multi-dimensional.
+
+    // declare a 2D array with 3 rows and 2 columns
+    int arr[3, 2];
+    // assign into row 0, column 1
+    arr[0, 1] = 3;
+
+Vector arrays are reference counted, so you can safely pass them into and out
+of functions without having to worry about freeing them.
+
+    float[] scale(float sc, float arr[])
+    {
+        float res[len(arr)];
+
+        for (i in 0:len(res))
+            res[i] = sc * arr[i];
+
+        return res;
+    }
+
+The built-in function `len(arr)` gives the size of the array `arr`. If it is a
+multi-dimensional array, you can give `len` an integer as the second argument
+to find the length along that dimension.
+
+You can also use `for` loops to iterate over the elements of an array in a
+for-each type syntax.
+
+    arr := {0, 4, 1, 2};
+
+    for (x in arr) {
+        // do something
+    }
+
+Note that array declarations can also be type-inferenced.
+
+### Parallel for (pfor)
+
+Our first GPU construct. the syntax of `pfor` is identical to the range
+iteration `for`.
+
+    pfor (i in 0:1000) {
+        // do something
+    }
+
+The difference is that `pfor` actually runs as a GPU kernel, and each iteration
+of the "loop" is run in parallel in a different GPU thread. Arrays can be
+read and written to on the GPU. So, for instance, if you wanted to take the
+element-wise production of two arrays, you could do the following.
+
+
+    float[] vecmult(float a[], float b[])
+    {
+        float c[len(a)];
+        pfor (i in :len(a))
+            c[i] = a[i] * b[i];
+    }
+
+Each scalar multiplication happens in a separate GPU thread.
+
+### Map and Reduce
+
+Vector provides two higher-order functions which run on the GPU. You denote
+a higher-order function by pre-pending an `@` symbol.
+
+The `map` function takes a function of one argument `f` and an array `a` and
+produces an array `b` in which `b[i] = f(a[i])`. So, for instance, to square
+each element of an array, we can do the following.
+
+    int square(int x)
+    {
+        return x * x;
+    }
+
+    int[] square_array(int arr[])
+    {
+        return @map(square, arr);
+    }
+
+The `reduce` function takes a function of two arguments and an array and applies
+the function to pairs of elements in the array, then pairs of the results of
+the first pass, and so on until there is a single result. This makes it useful
+for, say, taking the sum of an array.
+
+    int add(int x, int y)
+    {
+        return x + y;
+    }
+
+    int sum(int arr[])
+    {
+        return @reduce(add, arr);
+    }
+
+The function passed to reduce must be commutative and associative, otherwise
+the result of the computation is not likely to be what you would expect.
+
+## Example Program
+
+Here's a demonstration of what Vector can do. The following is a Mandelbrot
+set generator that runs on the GPU.
+
+    __device__ uint8 mandelbrot(int xi, int yi, int xn, int yn,
+        float left, float right, float top, float bottom)
+    {
+        iter := 0;
+
+        x0 := left + (right - left) / float(xn) * float(xi);
+        y0 := bottom + (top - bottom) / float(yn) * float(yi);
+        z0 := #(x0, y0);
+        z := #(float(0), float(0));
+
+        while (iter < 255 && abs(z) < 2) {
+            z = z * z + z0;
+            iter++;
+        }
+
+        return uint8(iter);
+    }
+
+    void print_pgm(uint8 shades[], int width, int height)
+    {
+        printf("P2\n");
+        printf("%d %d\n", width, height);
+        printf("255\n");
+
+        for (y in 0:height) {
+            for (x in 0:width)
+                printf("%u ", shades[y, x]);
+            printf("\n");
+        }
+    }
+
+    int vec_main()
+    {
+        img_height := 512;
+        img_width := 768;
+
+        uint8 shades[img_height, img_width];
+
+        left := float(-2.0);
+        right := float(1.0);
+        top := float(1.0);
+        bottom := float(-1.0);
+
+
+        pfor (yi in 0:img_height, xi in 0:img_width) {
+            shades[yi, xi] = mandelbrot(xi, yi, img_width, img_height,
+                                left, right, top, bottom);
+        }
+
+        print_pgm(shades, img_width, img_height);
+
+        return 0;
+    }
+
+It outputs the image as a portable graymap file on standard output.
+Here is what the result looks like mapping 0 to black and 255 to blue.
+
+![Mandelbrot Set](http://i.imgur.com/26vNg21.png)
+
+I wrote a CPU version of this program as well, using a `for` loop instead of
+a `pfor` statement and taking off the `__device__` annotation on the
+`mandelbrot` function.
+
+To see how the GPU performed compared to the CPU, I ran both versions with
+successively larger images. Here is how the runtime of the programs scaled with
+image area.
+
+![Mandelbrot Benchmark](http://i.imgur.com/NKS8WKx.png)
+
+As you can see, the GPU version performs much better, and scales much better
+with increasing load (the runtime is actually increasing linearly for the GPU
+as well as the CPU, but at a much lower rate).
+
+## Downsides
+
+ * Error reporting is more-or-less non-existent.
+ * No synchronization inside `pfor` statements. You will have to synchronize
+   by breaking up your program into multiple `pfor` statements.
+ * No way to do code separation.
+ * Difficult to access the large CUDA standard library. There is a built-in
+   `inline` function which allows you to insert inline CUDA code into Vector,
+   but you'd really have to be a compiler developer to understand how to use it.
+
+## Future Development
+
+What future development? It's a class project! What I actually hope to do is
+bake some of the features of Vector into a larger, more feature-rich programming
+language. The [Julia](http://julialang.org/) language looks pretty attractive
+for this, given its macro system and focus on scientific computing. I'd also
+like to compile to OpenCL instead of CUDA, since that would support a larger
+variety of hardware.
+
+[Code](https://github.com/vectorlang/vector/)
+[Final Report](https://dl.dropboxusercontent.com/u/22450509/vector.pdf)
