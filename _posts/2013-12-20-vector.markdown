@@ -172,7 +172,7 @@ The `map` function takes a function of one argument `f` and an array `a` and
 produces an array `b` in which `b[i] = f(a[i])`. So, for instance, to square
 each element of an array, we can do the following.
 
-    int square(int x)
+    __device__ int square(int x)
     {
         return x * x;
     }
@@ -182,12 +182,15 @@ each element of an array, we can do the following.
         return @map(square, arr);
     }
 
+The function passed into `@map` must be declared with the `__device__` annotation
+so that it is compiled for the GPU.
+
 The `reduce` function takes a function of two arguments and an array and applies
 the function to pairs of elements in the array, then pairs of the results of
 the first pass, and so on until there is a single result. This makes it useful
 for, say, taking the sum of an array.
 
-    int add(int x, int y)
+    __device__ int add(int x, int y)
     {
         return x + y;
     }
