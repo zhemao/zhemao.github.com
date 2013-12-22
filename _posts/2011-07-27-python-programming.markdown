@@ -172,7 +172,7 @@ contained in that string. How would you accomplish this? The first thing
 you might try is.
 
 {% highlight python %}
-contained = [(word in long_string) for word in word_list]
+contained = [word for word in word_list if word in long_string]
 {% endhighlight %}
 
 But this is not very efficient, because you have to go searching in the 
@@ -180,7 +180,7 @@ string every single time. Now what if we first split the string into a list?
 
 {% highlight python %}
 long_string_list = long_string.split()
-contained = [(word in long_string_list) for word in word_list]
+contained = [word for word in word_list if word in long_string_list]
 {% endhighlight %}
 
 This is also not quite so efficient, because looking up an item in a list 
@@ -188,7 +188,7 @@ still takes O(n) time. Now, what if we used a set?
 
 {% highlight python %}
 long_string_set = set(long_string.split())
-contained = [(word in long_string_set) for word in word_list]
+contained = [word for word in word_list if word in long_string_set]
 {% endhighlight %}
 
 Looking up a word in a set happens in constant time, so this method is very
@@ -196,6 +196,17 @@ efficient. Now of course, splitting a string into a list and turning a list
 into a set involve some processing cycles of their own, which is why the 
 third way will only be fastest for very large lists. For very small lists, 
 the first way is still faster.
+
+*Update* - Even faster than using a list comprehension would be to turn both
+`word_list` and `long_string` into sets and then do a union.
+
+{% highlight python %}
+long_string_set = set(long_string.split())
+word_set = set(word_list)
+contained = long_string_set & word_set
+{% endhighlight %}
+
+Thanks to Kostis Karantias for pointing this out.
 
 ## Generators
 
