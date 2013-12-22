@@ -301,19 +301,26 @@ Here is what the result looks like mapping 0 to black and 255 to blue.
 
 ![Mandelbrot Set](http://i.imgur.com/26vNg21.png)
 
-I wrote a CPU version of this program as well, using a `for` loop instead of
-a `pfor` statement and taking off the `__device__` annotation on the
-`mandelbrot` function.
+I wrote a similar program in C to run on the CPU.
 
 To see how the GPU performed compared to the CPU, I ran both versions with
 successively larger images. Here is how the runtime of the programs scaled with
 image area.
 
-![Mandelbrot Benchmark](http://i.imgur.com/NKS8WKx.png)
+![Mandelbrot Benchmark](http://i.imgur.com/NuBAh1w.png)
 
-As you can see, the GPU version performs much better, and scales much better
-with increasing load (the runtime is actually increasing linearly for the GPU
-as well as the CPU, but at a much lower rate).
+The benchmarks were performed on an Amazon EC2 G2 instance, which has a
+Quadro K5000 GPU and 2.6 GHz Xeon CPU. These benchmarks are obviously kind of
+apples and oranges, since we're benchmarking two different pieces of hardware,
+but suffice to say that on a decent gaming PC, the GPU could provide a speedup.
+
+You can see the code for the benchmarks on Github.
+
+[GPU Benchmark](https://github.com/vectorlang/vector/blob/master/bench/mandelbrot-bench-gpu.vec)
+[CPU Benchmark](https://github.com/vectorlang/vector/blob/master/bench/mandelbrot-bench-cpu.c)
+
+*Update: Some commenters on HN pointed out that the previous benchmark results
+in this article were incorrect. I have updated the post with new benchmark results.*
 
 ## Downsides
 
