@@ -198,7 +198,7 @@ third way will only be fastest for very large lists. For very small lists,
 the first way is still faster.
 
 *Update* - Even faster than using a list comprehension would be to turn both
-`word_list` and `long_string` into sets and then do a union.
+`word_list` and `long_string` into sets and then do a intersection.
 
 {% highlight python %}
 long_string_set = set(long_string.split())
