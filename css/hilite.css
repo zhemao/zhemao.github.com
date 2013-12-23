@@ -1,5 +1,6 @@
 /* taken from dpaste.com */
-.highlight { background: #f2f2f2; }
+pre { margin: 0px; }
+.highlight { background: #f2f2f2; padding: 10px; }
 .highlight .n { color: #000; font-style: normal; font-weight: normal; }
 .highlight .c { color: #008800; font-style: italic } /* Comment */
 .highlight .err { border: 1px solid #FF0000 } /* Error */
