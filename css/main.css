@@ -82,3 +82,13 @@ th, td {
   font-size: 12px;
   font-family: monospace;
 }
+
+.warning {
+  background-color: #F6E3CE;
+}
+
+.alert {
+  color: #F00;
+  font-weight: bold;
+  font-size: 1.2em;
+}
