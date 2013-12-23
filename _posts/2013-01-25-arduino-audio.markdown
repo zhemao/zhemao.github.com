@@ -19,7 +19,7 @@ by two black insulating bands. The piece of metal at the base is ground, the
 ring in the middle is the right channel audio, and the tip is the left
 channel audio (assuming you have a stereo speaker). 
 
-![Audio Jack Diagram](/images/audio-jack.png)
+![Audio Jack Diagram](http://i.imgur.com/QqM9KlZ.png)
 
 So, I hooked a wire from the base to ground, hooked a resistor from the tip to 
 pin 8, and then ran the [tone](http://arduino.cc/en/Tutorial/Tone) example
