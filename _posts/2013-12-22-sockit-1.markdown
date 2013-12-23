@@ -1,0 +1,431 @@
+---
+title: Trying out the Arrow SoCKit Part I - Blinking LEDs
+layout: default
+category: blog
+---
+
+In September, I bought one of the new [Arrow SoCKits](http://www.arrownac.com/solutions/sockit/).
+They are development boards for the Altera Cyclone V, a system-on-chip with
+an ARM processor and FPGA. Now that I'm out of school, I finally have some
+time to play around with it. I've decided to document the things I do with
+the SoCKit as a series of tutorials. Figuring out how to work with FPGA boards
+can be confusing and requires poring through a bunch of vendor datasheets and
+example code, so hopefully someone finds these tutorials helpful.
+For these tutorials, I will assume that you have programmed before and have some
+rudimentary understanding of digital electronics. If you have never programmed
+before, there are literally tons of free resources online. To be honest, though,
+FPGA programming and embedded systems might be a bit too challenging for
+first-time programmers, so I'd recommend getting more programming experience
+before coming back to these articles. If you have never studied digital
+electronics, ASIC World has a pretty good [tutorial](http://www.asic-world.com/digital/tutorial.html).
+I will be using the Verilog and SystemVerilog hardware description languages
+for these tutorials. I don't expect you to be familiar with either. I will
+explain the syntax as I go along.
+
+## Getting Started
+
+The first thing to do when trying out a new FPGA dev board is to get the LEDs
+to blink back-and-forth, Knight Rider style. This is a pretty simple circuit
+to create and gets you familiar with using the design tools and programming
+the chip. To make things more interesting, let's also design our circuit so
+that the speed at which the LEDs sweep back-and-forth can be controlled using
+the push-buttons on the board.
+
+## Installing the Software
+
+For programming the FPGA, you will need Altera's [Quartus II Web Edition](http://www.altera.com/products/software/quartus-ii/web-edition/qts-we-index.html)
+design software. There are versions for Windows and Linux. Altera officially
+supports only Red Hat Enterprise Linux with their Linux version, but you can
+install it on other distributions. If you are using Arch Linux like I am, there
+is a pretty good article on how to install it on the [Arch Wiki](https://wiki.archlinux.org/index.php/Altera_Design_Software).
+Those instructions may also be applicable to other distros.
+When downloading the files for installation, do not download the
+"Combined Files" package. It is 4.5 GB and contains some device families that
+you will not need. Instead, go to the "Individual Files" section and download
+"Quartus II Software", "ModelSim-Altera Edition", and "Cyclone V device support".
+This should give you files named like "QuartusSetupWeb-*w.x.y.z*.run",
+"ModelSimSetup-*w.x.y.z*.run", and "cyclonev-*w.x.y.z*.qdz". Change the .run
+files to be executable and then run the "QuartusSetupWeb-*w.x.y.z*.run" file.
+Follow the installation instructions given.
+
+## Creating the Project
+
+Start Quartus and click on the big button labeled "New Project Wizard".
+On the first screen, enter the directory you'd like to put the project files
+in (you'll probably want to create a new directory for this). Give your project
+a name (I called mine "sockit\_test"). Skip page 2, as you have no files to add.
+On page 3, set the device family to Cyclone V and choose 5CSXFC6D6F31C8 as the
+specific device. On page 4, pick ModelSim-Altera as the Simulation tools and
+choose "SystemVerilog HDL" as the format. This is not important for this part,
+since you won't be doing simulation just yet, but it will come in handy later.
+Once you get to page 5, you can press Finish.
+
+## Top-Level File and Pin Assignment
+
+Now that you've created the project, you can set up the top-level file and
+assign the pins you need to it. In Quartus, create a Verilog file by clicking
+"File" -> "New" -> "Verilog HDL file". Save the file with the same name as your
+project (so if you called your project "sockit\_test", save it as "sockit\_test.v".
+I recommend putting your HDL files in a separate subdirectory in your project
+folder called "rtl".
+
+Put the following Verilog code in "sockit\_test.v".
+
+{% highlight verilog %}
+module sockit_test (
+    CLOCK_50,
+    KEY,
+    LED
+);
+
+input CLOCK_50;
+input [3:0] KEY;
+
+output [3:0] LED;
+
+endmodule
+{% endhighlight %}
+
+If you're not familiar with Verilog, a "module" is a hardware block. In this
+code, we are simply specifying what the inputs and outputs of the block are.
+For the top-level module, the inputs and outputs are the pins of the FPGA.
+For our example, we only need the 4 push button keys, 4 LEDs, and the 50 MHz
+clock. You can assign the pins on the FPGA to your inputs and outputs by going
+to "Assignments" -> "Pin Planner" and entering in the following assignments.
+
+| Node Name | Location  |
+|-----------|-----------|
+| CLOCK\_50 | PIN\_K14  |
+| KEY\[3\]  | PIN\_AD11 |
+| KEY\[2\]  | PIN\_AD9  |
+| KEY\[1\]  | PIN\_AE12 |
+| KEY\[0\]  | PIN\_AE9  |
+| LED\[3\]  | PIN\_AD7  |
+| LED\[2\]  | PIN\_AE11 |
+| LED\[1\]  | PIN\_AD10 |
+| LED\[0\]  | PIN\_AF10 |
+
+## Controlling the LEDs
+
+Now that the pins have been assigned, you can start putting together the
+different modules to make the circuit work. The first module we will make
+is the one driving the LEDs. We will call it "blinker.v".
+
+{% highlight verilog %}
+module blinker (
+    clk,
+    delay,
+    led,
+    reset,
+    pause
+);
+
+input clk;
+input [3:0] delay;
+
+output reg [3:0] led;
+
+input reset;
+input pause;
+
+reg [23:0] count = 24'b0;
+reg [2:0] pos = 3'b000;
+reg running = 1'b1;
+
+always @(pos) begin
+    case (pos)
+        3'b000: led <= 4'b0001;
+        3'b001: led <= 4'b0010;
+        3'b010: led <= 4'b0100;
+        3'b011: led <= 4'b1000;
+        3'b100: led <= 4'b0100;
+        3'b101: led <= 4'b0010;
+        default: led <= 4'b0000;
+    endcase
+end
+
+always @(posedge clk) begin
+    if (reset) begin
+        count <= 24'b0;
+        pos <= 3'b000;
+        running <= 1'b1;
+    end else if (pause) begin
+        running <= !running;
+    end else if (running) begin
+        if (count == 24'b0) begin
+            count <= {delay, 20'b0};
+            if (pos == 3'b101)
+                pos <= 3'b000;
+            else
+                pos <= pos + 1'b1;
+        end else begin
+            count <= count - 1'b1;
+        end
+    end
+end
+
+endmodule
+{% endhighlight %}
+
+<div class="warning">
+<p><span class="alert">Warning!</span>
+To everyone reading this who is primarily a "software person" and does not
+have much experience with digital logic, take heed that though Verilog looks
+superficially like software code with its "case" and "if" statements, it is
+actually describing hardware blocks. One particular difference is that there
+is no concept of order in Verilog. Statements on subsequent lines are all
+"running" at the same time. To give an "ordering" to computation, you must
+explicitly design state machines as the previous code does. If you don't keep
+these things in mind, you might end up writing completely valid Verilog that
+is impossible to synthesize.</p>
+<p>And now back to our regularly scheduled blog post ...</p>
+</div>
+
+The first part of this module should look familiar to you. I am stating that
+this module takes as input a clock `clk`, a four-bit `delay` signal
+(we treat it as a 4-bit unsigned integer), a `reset` signal, and a `pause`
+signal. The `reset` and `pause` signals correspond to two of the push buttons
+on the board. The output is the 4-bit led output. I have declared this as `reg`,
+which stands for register. Verilog requires you to declare as `reg` anything
+that could hold state. It turns out that the output won't actually hold any
+state, but the Verilog compiler is not clever enough to figure this out.
+If this confuses you, don't worry. It will make more sense once I explain
+the `always` blocks.
+
+The second part of the module are some internal registers `count`, `pos`, and
+`running`, which are initialized to 0, 0, and 1, respectively. These registers
+actually will hold state, unlike the output `led` register.
+
+The third part of the module are the `always` blocks. These constructs tell
+our hardware to perform some operation whenever the signals in the sensitivity
+list (the stuff inside the parenthesis after the `@` sign) change.
+In the first `always` block, the sensitivity list is the signal `pos`,
+so the operations inside the `always` block will occur whenever `pos` changes.
+Inside this `always` block is a `case` statement that maps certain values of
+pos to certain values of `led`. You will notice that in everything except the
+default case, exactly one bit in `led` is high, corresponding to a lit led.
+With increasing `pos`, the lit led goes to the left and then back to the right.
+Since every possible case of pos has been covered, this `always` block functions
+as a combinational circuit. If we had left out a case (say, by getting rid of
+the default case), the compiler would warn us about inferring a latch. That is,
+if `pos` happened to be in a case where the behavior was unspecified, the
+value of `led` would keeps its previous value. You can see now why `led` had
+to be declared a register even though it isn't one.
+
+The second `always` block contains in its sensitivity list, `posedge clk`.
+This means that the `always` block is triggered by the rising edge of `clk`.
+Inside the `always` block is a large nested if statement. Here, we state what
+values each of the internal registers will take at each cycle. If `reset` is
+triggered, we change `count`, `pos`, and `running` back to their original values.
+If `pause` is triggered, we toggle the value of `running`. If we are running,
+then we are under normal operation, during which we want to regularly increment
+`pos` until it reaches 5, at which point we wrap around back to 0. However, we
+want the incrementing of `pos` to happen slowly at a controlled speed.
+We accomplish by initially setting the `count` variable to the value of `delay` 
+multiplied by 2<sup>20</sup>, decrementing until it reaches 0, and then
+resetting it. The value of `pos` is then only updated when `delay` is reset.
+There is no logic specified for when `running` is false, so in that case all
+
+## Setting the delay
+
+So how do we set the `delay` variable that the `blinker` module needs?
+We'll have to create a different module. Call it "delay\_ctrl.v".
+
+{% highlight verilog %}
+module delay_ctrl (
+    clk,
+    faster,
+    slower,
+    delay,
+    reset
+);
+
+input clk;
+input faster;
+input slower;
+output [3:0] delay;
+input reset;
+
+reg [3:0] delay_intern = 4'b1000;
+
+assign delay = delay_intern;
+
+always @(posedge clk) begin
+    if (reset)
+        delay_intern <= 4'b1000;
+    else if (faster && delay_intern != 4'b0001)
+        delay_intern <= delay_intern - 1'b1; 
+    else if (slower && delay_intern != 4'b1111)
+        delay_intern <= delay_intern + 1'b1;
+end
+
+endmodule
+{% endhighlight %}
+
+This module takes as input the clock, two control signals `faster` and `slower`,
+as well as a `reset` signal. The control signals correspond to push buttons.
+The output is the 4-bit `delay` which will feed into the blinker.
+We declare an internal register `delay_intern` and initialize it to 8,
+which is the halfway point. This internal register is then assigned to
+the `delay` output. In our positive-edge triggered `always` block, we first
+check to see if a reset is triggered, in which case we set `delay_intern` back
+to 8. If `faster` is pressed, we reduce the delay. If `slower` is pressed we
+increase it. If none of the control signals are high, we maintain state.
+
+## Handling the Buttons
+
+In our previous two modules, we assumed that our control signals would be high
+for exactly one cycle after the keys are pressed. Given the speed of the human
+finger, this would obviously be impossible if the control signals were tied
+directly to the keys. Therefore, we need a unit to detect when each key is
+pressed and set the corresponding control signal high for one cycle.
+We will call it "oneshot.v".
+
+{% highlight verilog %}
+module oneshot (
+    clk,
+    edge_sig,
+    level_sig
+);
+
+input clk;
+input [3:0] edge_sig;
+output [3:0] level_sig;
+
+reg [3:0] cur_value;
+reg [3:0] last_value;
+
+assign level_sig = ~cur_value & last_value;
+
+always @(posedge clk) begin
+    cur_value <= edge_sig;
+    last_value <= cur_value;
+end
+
+endmodule
+{% endhighlight %}
+
+Here, `edge_sig` is the input from our keys and `level_sig` is the output
+for our control signals. The trick here is that we keep two 4-bit registers
+`cur_value` and `last_value`. On each cycle, we read the values of the keys
+into `cur_value` and the previous value of `cur_value` into `last_value`.
+The signals from the keys are 0 when pressed and 1 when unpressed, so we
+want each bit of our output to be high when the current value is 0 and the
+last value was 1, which is what the `assign` statement is doing.
+You may think that I have mixed up the order of `cur_value` and `last_value`
+in the `always` block. But actually, order does not matter when using the
+non-blocking `<=` assignment operator. When using `<=`, the values being read
+will always be the values from the previous clock cycle.
+
+## Tying it All Together
+
+Finally, we must tie our three components together in our top-level module.
+
+{% highlight verilog %}
+module sockit_test (
+    CLOCK_50,
+    KEY,
+    LED
+);
+
+input CLOCK_50;
+input [3:0] KEY;
+
+output [3:0] LED;
+
+wire [3:0] key_os;
+wire [3:0] delay;
+wire main_clk = CLOCK_50;
+
+oneshot os (
+    .clk (main_clk),
+    .edge_sig (KEY),
+    .level_sig (key_os)
+);
+
+delay_ctrl dc (
+    .clk (main_clk),
+    .faster (key_os[1]),
+    .slower (key_os[0]),
+    .delay (delay),
+    .reset (key_os[3])
+);
+
+blinker b (
+    .clk (main_clk),
+    .delay (delay),
+    .led (LED),
+    .reset (key_os[3]),
+    .pause (key_os[2])
+);
+
+endmodule
+{% endhighlight %}
+
+We've now expanded our original "sockit\_test.v" to connect everything together.
+We have three internal signals, `key_os`, `delay`, and `main_clk`. These signals
+are marked `wire`, which is the opposite of `reg`. Our modules are tied to
+these signals using "port mappings", which are statements of the following form.
+
+{% highlight verilog %}
+module_name instance_name (
+    .internal_signal (external_signal),
+    .internal_signal2 (external_signal2)
+);
+{% endhighlight %}
+
+The `module_name` is the name we gave to the module, and `instance_name` is the
+name we give to this instance of the module. The instance name doesn't really
+matter as long as they are unique within a module. The `internal_signal` name
+is just the input/output name given inside the port-mapped module.
+The `external_signal` name of the wire in the outer module.
+
+## Compiling and Programming
+
+Now that we've finished our circuit, we can compile our hardware description
+and program it onto the FPGA. First, though, let's do a quick static check
+to make sure we didn't screw up somewhere. Run "Analysis and Synthesis" by
+clicking on the icon with a purple triangle and blue check mark in the tool bar.
+Wait for the action to complete. You can watch its progress in the "Tasks"
+window at the middle left. After it's finished, inspect the log output in the
+"Messages" window at the bottom. Make sure it doesn't have any errors or
+warnings beyond "Parallel compilation is not licensed and has been disabled".
+If you do see warnings or errors, look back at your hardware descriptions and
+make sure there isn't a typo. "Analysis and Synthesis" will be useful later on
+for catching syntax mistakes.
+
+Now that you've checked the descriptions, you can run a full compilation by
+clicking the icon with the purple triangle (directly to the left of the
+"Analysis and Synthesis" button). Be prepared to wait a little while.
+Once the compilation is complete, a file called "sockit\_test.sof" should be
+generated in the "output\_files" subdirectory of your project folder.
+This file contains the configuration you will program into the FPGA.
+
+Before you try to program the FPGA, make sure that the USB Blaster drivers
+are installed correctly (check the Arch Wiki article at the top for Linux,
+or [this](http://www.altera.com/download/drivers/usb-blaster/dri-usb-blaster-vista.html)
+article for Windows). Make sure you have the SoCKit connected to your computer
+correctly. The USB Blaster port is the microUSB port farthest to the right,
+if the ports are facing toward you. Once you are sure the drivers are working,
+open up the programmer by double-clicking on "Program Device" in the "Tasks"
+window or by clicking on "Tools" -> "Programmer" in the menu. In the new window,
+go to "Hardware Setup" and make sure "Currently selected hardware" is set to
+something like "CV SoCKit". If you cannot find this selection in the dropdown
+menu, you may want to check that the board is on, the USB blaster is connected,
+and the drivers are installed properly. Once you've selected the correct
+hardware, press the "Auto Detect" button in the programmer window.
+You should now see two devices, 5CSXFC6D6F31 and SOCVHPS. The former is the
+FPGA, the latter is the ARM processor. Right click on the entry for the FPGA
+and select "Change File". Pick the "sockit\_test.sof" file that was generated
+during compilation. Now press start, and the .sof file will be programmed onto
+the FPGA. If you are successful, the SoCKit will look like the following.
+
+<iframe width="560" height="315" src="//www.youtube.com/embed/D-hVIapJg7I"
+    frameborder="0" allowfullscreen="true">
+</iframe>
+
+## Conclusion
+
+Congratulations, you just programmed an FPGA! In my next post, I will take a
+look at the ARM processor on the Cyclone V and how to install an operating
+system on it.
