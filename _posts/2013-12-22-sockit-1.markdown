@@ -1,5 +1,5 @@
 ---
-title: Trying out the Arrow SoCKit Part I - Blinking LEDs
+title: Exploring the Arrow SoCKit Part I - Blinking LEDs
 layout: default
 category: blog
 ---
