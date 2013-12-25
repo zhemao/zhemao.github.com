@@ -250,3 +250,5 @@ booting Linux on an ARM development board, this is actually a pretty major
 accomplishment. You've now learned the general flow of how to get Linux
 working on an embedded platform (excluding building and installing U-boot).
 Next time, we'll look at how the CPU and FPGA can communicate.
+
+[<- Part 1](/blog/2013/12/22/sockit-1.html)

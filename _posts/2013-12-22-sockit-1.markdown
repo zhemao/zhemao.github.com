@@ -430,3 +430,5 @@ the FPGA. If you are successful, the SoCKit will look like the following.
 Congratulations, you just programmed an FPGA! In my next post, I will take a
 look at the ARM processor on the Cyclone V and how to install an operating
 system on it.
+
+[Part 2 ->](/blog/2013/12/24/sockit-2.html)
