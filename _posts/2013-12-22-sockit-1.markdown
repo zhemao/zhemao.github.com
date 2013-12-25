@@ -415,6 +415,7 @@ something like "CV SoCKit". If you cannot find this selection in the dropdown
 menu, you may want to check that the board is on, the USB blaster is connected,
 and the drivers are installed properly. Once you've selected the correct
 hardware, press the "Auto Detect" button in the programmer window.
+It may ask you to choose your device. Choose "5CSXFC6D6".
 You should now see two devices, 5CSXFC6D6F31 and SOCVHPS. The former is the
 FPGA, the latter is the ARM processor. Right click on the entry for the FPGA
 and select "Change File". Pick the "sockit\_test.sof" file that was generated
