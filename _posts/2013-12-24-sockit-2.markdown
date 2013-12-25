@@ -37,7 +37,7 @@ the same thing I did and try the same things over and over again. If it's
 not working, there's probably some information you're missing. Go open an
 issue on the <a href="https://github.com/zhemao/zhemao.github.com/issues">
 Github repo for this site</a> with your question and I'll try to answer it.
-If that doesn't work, there's always <a href="http://stackoverflow.com">Stack Overflow</a></p>
+If that doesn't work, there's always <a href="http://stackoverflow.com">Stack Overflow</a>.</p>
 </div>
 
 ## Step 1 - Configuring the Board
