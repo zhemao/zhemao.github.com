@@ -36,8 +36,8 @@ love of all that is holy, ask for help if you get stuck!!!!</span> Don't do
 the same thing I did and try the same things over and over again. If it's
 not working, there's probably some information you're missing. Go open an
 issue on the <a href="https://github.com/zhemao/zhemao.github.com/issues">
-Github repo for this site</a> and hopefully I or, if you're lucky, someone
-more experienced than I will be able to tell what's going wrong.</p>
+Github repo for this site</a> with your question and I'll try to answer it.
+If that doesn't work, there's always [Stack Overflow](http://stackoverflow.com/).</p>
 </div>
 
 ## Step 1 - Configuring the Board
