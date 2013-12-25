@@ -1,0 +1,252 @@
+---
+title: Trying out the Arrow SoCKit Part II - Installing Linux
+layout: default
+category: blog
+---
+
+In my last post, I showed you how to get a simple FPGA example working on the
+Arrow SoCKit dev board. In this post, we will explore the CPU side of the
+Cyclone V SoC and install a custom Linux kernel and root filesystem using
+[Buildroot](http://buildroot.uclibc.org/). This tutorial will focus on booting
+via SD card, so make sure you have a microSDHC card handy. If your computer
+doesn't have a microSD port, you will also need a microSD - SD and possibly
+an SD - USB adapter. Also, these instructions assume you are running some form
+of Linux. It should be possible to do all these things on Windows or OSX as
+well, but you'll have to figure that out yourself (or switch to a *real*
+operating system).
+
+[RocketBoards.org](http://rocketboards.org/foswiki/Main/WebHome) has some
+articles on booting Linux on the SoCKit, but they are focused on booting
+Altera's Yocto Linux distribution. If you don't feel like going through
+compiling everything yourself, you can always just follow their instructions
+for [booting from a pre-built image](http://rocketboards.org/foswiki/Documentation/ArrowSoCKITEvaluationBoardLinuxGettingStarted).
+However, if you're a Linux nerd like me and want to get the educational benefits
+of doing things the hard way, read on!
+
+<div class="warning">
+<p><span class="alert">Warning! Here there be dragons!</span> Getting Linux
+running on an embedded system can be something of a dark art. One semester in
+my days as an undergraduate, I took on a research project that involved booting
+Android on an Arndale development board. It took two months of banging my head
+against the problem before I finally gave up and asked for help on a
+kernel dev mailing list. Turns out I was just using the wrong versions of the
+kernel and bootloader. So what am I trying to say here? I'm saying that you
+shouldn't get discouraged if things don't work and <span class="alert">for the
+love of all that is holy, ask for help if you get stuck!!!!</span> Don't do
+the same thing I did and try the same things over and over again. If it's
+not working, there's probably some information you're missing. Go open an
+issue on the <a href="https://github.com/zhemao/zhemao.github.com/issues">
+Github repo for this site</a> and hopefully I or, if you're lucky, someone
+more experienced than I will be able to tell what's going wrong.</p>
+</div>
+
+## Step 1 - Configuring the Board
+
+To boot Linux from the SD Card, you will first need to set the jumpers and
+switches on the board correctly. Follow the instructions on the
+[RocketBoards.org](http://rocketboards.org/foswiki/Documentation/ArrowSoCKITEvaluationBoardLinuxGettingStarted#Configuring_the_Board)
+article to do this.
+
+## Step 2 - Partitioning the SD Card
+
+To partition the SD card, use the fdisk program. Plug the SD card into your
+computer and delete any existing partitions if there are any.
+Then, run the command `fdisk /dev/sdX`. Replace `/dev/sdX` with whatever
+device file your OS recognizes the SD card as (it'll probably be `/dev/sdb`).
+This will bring you into the fdisk command prompt. Enter the following commands
+(note: when I type `<enter>` it means just hit enter without entering a command).
+
+    n
+    p
+    3
+    2048
+    +2048
+    t
+    a2
+    n
+    p
+    <enter>
+    <enter>
+    +256M
+    t
+    1
+    0b
+    <enter>
+    <enter>
+    <enter>
+    w
+
+Once you enter "w", the partition table will be written to the SD card.
+
+## Step 3 - Installing the bootloader
+
+The bootloader used for embedded ARM systems is called u-boot.
+Unfortunately, this is the one part that I couldn't figure out how to install
+from source. There seems to be a problem with the stage 1 bootloader in the
+rocketboards.org git repo. Fortunately there is a (rather hacky) way around
+this. Simply extract the bootloader from the pre-built image. I've uploaded
+[the bootloader image](https://dl.dropboxusercontent.com/u/22450509/fpga-series/bootloader.img)
+for you so that you don't have to go and download a 1.9 GB image in order to
+extract a single megabyte from it. Once you've downloaded it, you can
+write it to the SD card like so.
+
+    sudo dd if=bootloader.img of=/dev/sdX3 bs=512
+    sudo sync
+
+Don't forget to replace the "X".
+
+## Step 4 - Installing the kernel
+
+Clone the sources of the kernel for the SoCKit from RocketBoards.org.
+
+    git clone git://git.rocketboards.org/linux-socfpga.git
+    cd linux-socfpga
+    git checkout -b sockit rel_13.02_RC10
+
+You will also need to download the
+[Linaro ARM toolchain](http://releases.linaro.org/13.11/components/toolchain/binaries/gcc-linaro-arm-linux-gnueabihf-4.8-2013.11_linux.tar.xz)
+to get the cross-compiler. Extract the tarball anywhere on your system and
+then add the "bin" subdirectory of the extracted folder to your path.
+If you've done this properly, you should be able to run the following command.
+
+    arm-linux-gnueabihf-gcc --version
+
+Now that you have the cross-compiler, you can start building the kernel.
+First, make sure to choose the correct configuration.
+
+    make CROSS_COMPILE=arm-linux-gnueabihf- ARCH=arm socfpga_defconfig
+
+You'll probably want to add an alias for the first part of the command to
+your .bashrc or .zshrc. For instance, I have
+
+    alias armmake='make CROSS_COMPILE=arm-linux-gnueabihf- ARCH=arm'
+
+Now we can build the kernel image itself. To do this, you will first need
+to install the U-boot "mkimage" tool. On Ubuntu and Debian, just install
+the "uboot-mkimage" package. On Arch, install the "uboot-mkimage" package from
+the [AUR](https://aur.archlinux.org/packages/uboot-mkimage/).
+The Linux kernel takes a long time to build. You can speed things up a bit
+by using multiple threads. The command I use is...
+
+    armmake -j4 uImage LOADADDR=0x8000
+
+You should replace 4 with the number of cores you have on your computer.
+
+You also need to build the device tree for the SoCKit board.
+
+    armmake dtbs
+
+Now that the kernel and device tree are built, you need to copy them onto the
+boot partition. First, format the partition as FAT32 and mount it.
+
+    sudo mkfs.fat /dev/sdX1
+    sudo mount /dev/sdX1 /mnt
+
+Then copy kernel and device tree onto the filesystem and unmount it.
+
+    sudo cp arch/arm/boot/uImage /mnt
+    sudo cp arch/arm/boot/socfpga_cyclone5.dtb /mnt/socfpga.dtb
+    sudo umount /mnt
+
+## Step 5 - Installing the Root Filesystem
+
+For our root filesystem, we will use [Buildroot](http://buildroot.uclibc.org/).
+Buildroot is a set of buildscripts that can produce a Linux filesystem for an
+embedded platform. First, download and extract the [tarball](http://buildroot.uclibc.org/downloads/buildroot-2013.11.tar.gz).
+Go into the extracted folder and run `make menuconfig`. Here, you can configure
+the filesystem image that Buildroot will produce. I suggest you choose the
+following options.
+
+First, go to "Target options" and set the following options
+
+ * Target Architecture: ARM (big endian)
+ * Target Architecture Variant: cortex-A9
+ * Target ABI: EABIhf
+ * Floating point strategy: VFPv2
+ * ARM instruction set: ARM
+
+Then, go to "Build Options" and change "Number of jobs to run simultaneously"
+to the number of cores you have.
+
+Go to "Toolchain" and do the following
+
+ * Set "Toolchain path" to the folder you extracted the Linaro toolchain to
+ * Set "Toolchain prefix" to "arm-linux-gnueabihf"
+ * Change "External toolchain C library" to "glibc/eglibc"
+ * Select "Toolchain has RPC support"
+ * Select "Toolchain has C++ support"
+ * Make sure "Enable MMU support" is selected
+
+Go to "System configuration" and change the following.
+
+ * Change the hostname, if you wish
+ * Set a root password, if you prefer
+ * Select "Run a getty after boot"
+ * Go to "getty options"
+    - Change the baudrate to 57600
+ * Make sure "remount root filesystem during boot" is selected
+
+Go to "Target packages" and select any extra packages you want.
+I suggest you select "Package managers" -> "opkg". This will allow you to
+install packages later if you want.
+
+Go to "Filesystem images" and make sure "tar the root filesystem" is selected.
+
+Save and exit menuconfig, then run `make` to build everything. If everything
+works out, you will see the root filesystem image generated under
+"output/images/rootfs.tar". You will need to untar this onto the root partition.
+
+    sudo mkfs.ext3 /dev/sdX2
+    sudo mount /dev/sdX2 /mnt
+    sudo tar xf output/images/rootfs.tar -C /mnt
+
+This will format the root partition and extract the files onto it.
+Don't unmount the partition just yet, we'll need to add some more files.
+
+## Step 6 - Install the kernel modules
+
+The kernel has been installed on the boot partition, but you will also need to
+build the kernel modules and install them on the root partition. Go back to
+your kernel folder and run the following.
+
+    armmake -j4 modules
+    sudo make ARCH=arm INSTALL_MOD_PATH=/mnt modules_install
+    sudo umount /mnt
+
+Now, finally, your SD card is ready. You can now try booting it.
+But to see what the OS is doing, you will need to use the serial port.
+
+## Step 7 - Setup the serial port
+
+You will use a USB serial connection to communicate with the board.
+First, you should install "minicom", a serial terminal program for Linux.
+Then, you'll have to configure minicom with the correct settings for the
+SoCKit's serial line. To enter the configuration menu, run `sudo minicom -s`.
+Go to "Serial port setup". Change the "Serial Device" to "/dev/ttyUSB0".
+In the same submenu, open "Bps/Par/Bits". Set the speed to 57600. You will
+probably have to hit "&lt;next&gt;" or "&lt;prev&gt;" a bunch of times.
+Set parity to "None", data to 8, and stop bits to 1. In the end, "Current"
+should be "57600 8N1". Go back to the "Serial port setup" menu and make sure
+"Hardware Flow Control" and "Software Flow Control" are both off. Then exit
+this menu by hitting enter and hit "Save setup as dfl", followed by
+"Exit from minicom".
+
+Now, plug your microSD card into the microSD slot on the board (it's on the
+bottom underneath the push buttons). Plug the microUSB cable into the
+USB UART port (it's the microUSB port farthest to the left), and connect it
+to your computer. Press the red button to switch on the board and then run
+"minicom" without arguments in your terminal. If you leave it for a while,
+the kernel will start booting. If everything is successful, you will eventually
+be presented with a login prompt.
+
+If you hit some buttons when the board was first booting up, you may see a
+prompt reading "SOCFPGA\_CYCLONE5". This is the U-boot console. To boot the
+kernel, just type in "boot" and hit enter.
+
+## Conclusion
+
+Congrats, you just booted Linux on the SoCKit! If this is your first time
+booting Linux on an ARM development board, this is actually a pretty major
+accomplishment. You've now learned the general flow of how to get Linux
+working on an embedded platform (excluding building and installing U-boot).
+Next time, we'll look at how the CPU and FPGA can communicate.
