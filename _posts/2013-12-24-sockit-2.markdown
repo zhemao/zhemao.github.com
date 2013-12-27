@@ -104,7 +104,7 @@ Clone the sources of the kernel for the SoCKit from RocketBoards.org.
 
     git clone git://git.rocketboards.org/linux-socfpga.git
     cd linux-socfpga
-    git checkout -b sockit rel_13.02_RC10
+    git checkout -b sockit ACDS13.1_REL_GSRD_PR
 
 You will also need to download the
 [Linaro ARM toolchain](http://releases.linaro.org/13.11/components/toolchain/binaries/gcc-linaro-arm-linux-gnueabihf-4.8-2013.11_linux.tar.xz)
@@ -148,7 +148,7 @@ boot partition. First, format the partition as FAT32 and mount it.
 Then copy kernel and device tree onto the filesystem and unmount it.
 
     sudo cp arch/arm/boot/uImage /mnt
-    sudo cp arch/arm/boot/socfpga_cyclone5.dtb /mnt/socfpga.dtb
+    sudo cp arch/arm/boot/dts/socfpga_cyclone5.dtb /mnt/socfpga.dtb
     sudo umount /mnt
 
 ## Step 5 - Installing the Root Filesystem
