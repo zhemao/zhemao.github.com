@@ -21,7 +21,7 @@ electronics, ASIC World has a pretty good [tutorial](http://www.asic-world.com/d
 I will be using the Verilog and SystemVerilog hardware description languages
 for these tutorials. I don't expect you to be familiar with either. I will
 explain the syntax as I go along. All of the hardware descriptions can be
-found on [Github](https://github.com/zhemao/sockit_test).
+found on [Github](https://github.com/zhemao/sockit_test/tree/part1).
 
 ## Getting Started
 
