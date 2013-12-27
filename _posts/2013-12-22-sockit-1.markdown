@@ -74,15 +74,10 @@ Put the following Verilog code in "sockit\_test.v".
 
 {% highlight verilog %}
 module sockit_test (
-    CLOCK_50,
-    KEY,
-    LED
+    input CLOCK_50,
+    input [3:0] KEY,
+    output [3:0] LED
 );
-
-input CLOCK_50;
-input [3:0] KEY;
-
-output [3:0] LED;
 
 endmodule
 {% endhighlight %}
@@ -114,20 +109,12 @@ is the one driving the LEDs. We will call it "blinker.v".
 
 {% highlight verilog %}
 module blinker (
-    clk,
-    delay,
-    led,
-    reset,
-    pause
+    input clk,
+    input [3:0] delay,
+    output reg [3:0] led,
+    input reset,
+    input pause
 );
-
-input clk;
-input [3:0] delay;
-
-output reg [3:0] led;
-
-input reset;
-input pause;
 
 reg [23:0] count = 24'b0;
 reg [2:0] pos = 3'b000;
@@ -234,18 +221,12 @@ We'll have to create a different module. Call it "delay\_ctrl.v".
 
 {% highlight verilog %}
 module delay_ctrl (
-    clk,
-    faster,
-    slower,
-    delay,
-    reset
+    input clk,
+    input faster,
+    input slower,
+    output [3:0] delay,
+    input reset
 );
-
-input clk;
-input faster;
-input slower;
-output [3:0] delay;
-input reset;
 
 reg [3:0] delay_intern = 4'b1000;
 
@@ -284,14 +265,10 @@ We will call it "oneshot.v".
 
 {% highlight verilog %}
 module oneshot (
-    clk,
-    edge_sig,
-    level_sig
+    input clk,
+    input [3:0] edge_sig,
+    output [3:0] level_sig
 );
-
-input clk;
-input [3:0] edge_sig;
-output [3:0] level_sig;
 
 reg [3:0] cur_value;
 reg [3:0] last_value;
@@ -324,15 +301,10 @@ Finally, we must tie our three components together in our top-level module.
 
 {% highlight verilog %}
 module sockit_test (
-    CLOCK_50,
-    KEY,
-    LED
+    input CLOCK_50,
+    input [3:0] KEY,
+    output [3:0] LED
 );
-
-input CLOCK_50;
-input [3:0] KEY;
-
-output [3:0] LED;
 
 wire [3:0] key_os;
 wire [3:0] delay;
