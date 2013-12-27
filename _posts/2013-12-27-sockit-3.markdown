@@ -1,0 +1,155 @@
+---
+title: Exploring the Arrow SoCKit Part III - Controlling FPGA from Software
+layout: default
+category: blog
+---
+
+In part I, I showed you how to load a simple LED example onto the FPGA.
+In part II, I showed you how to install Linux onto the ARM processor.
+Now, in part III, I will show you how to connect the two together so that
+you can control the speed of the blinking LEDs from software.
+To do this, we will use Qsys, a system integration tool from Altera that
+can automatically generate interconnect logic to hook up different hardware
+modules.
+
+## A Brief Aside on Memory-Mapped IO
+
+Before we begin, it's useful to go over exactly how software running on
+the CPU interacts with hardware peripherals. If you are already familiar with
+the concept of memory-mapped IO, feel free to skip this section. Otherwise,
+read on.
+
+In order for software to control hardware peripherals, the processor must have
+a way to communicate with the peripherals. This communication method must
+also be extensible without changing the CPU hardware, since one CPU model
+could be used in many types of systems with different sets of peripherals.
+The method used by most modern processors is memory-mapped IO, in which the
+"memory" that a processor sees is actually a bus or some other kind of
+interconnect, and different parts of the address space are mapped either to
+actual RAM or to hardware peripherals.
+
+![Memory Mapped IO](http://i.imgur.com/HyPJkvi.png)
+
+The processor can then send commands to a peripheral by writing to the
+peripheral's address space and get information back by reading from the
+peripheral's address space.
+
+## The Avalon MM Interface
+
+So now you know that we'll need to hook up our peripherals to a memory bus in
+order for the CPU to communicate with them. But what exactly is the interface
+for connecting a hardware unit to the bus?
+
+On Altera's FPGAs, the easiest bus interface to use is the Avalon MM interface.
+Avalon MM is a master-slave protocol, with a CPU being the master
+and the peripherals being the slaves.
+
+Avalon memory-mapped slaves can have the following signals
+
+| Name       | Direction | Width            | Description                                               |
+|------------|-----------|------------------|-----------------------------------------------------------|
+| address    | input     | up to 64         | the address on the slave being accessed                   |
+| read       | input     | 1                | indicates whether a read operation is requested           |
+| readdata   | output    | 8, 16, 32, or 64 | the data that will be read                                |
+| write      | input     | 1                | indicates whether a write operation is requested          |
+| writedata  | input     | 8, 16, 32, or 64 | the data to be written                                    |
+| byteenable | input     | 2, 4, or 8       | for multi-byte writedata, indicates which bytes are valid |
+
+This is not an exhaustive list of course, but these are the ones that are
+likely to be of concern unless you are doing something fancy.
+
+These signals are also optional, so you can, say, leave out "read" and "readdata"
+if you don't care about reading from the peripheral.
+In fact, that's exactly what we're going to do for our delay controller.
+
+## Delay Control as Avalon Slave
+
+We will modify our `delay_ctrl` module from part 1 so that it is an Avalon
+slave. This will allow us to set the delay from the CPU.
+
+{% highlight verilog %}
+module delay_ctrl (
+    input clk,
+    input reset,
+
+    input faster,
+    input slower,
+    output [3:0] delay,
+
+    input write,
+    input [7:0] writedata
+);
+
+reg [3:0] delay_intern = 4'b1000;
+
+assign delay = delay_intern;
+
+always @(posedge clk) begin
+    if (reset)
+        delay_intern <= 4'b1000;
+    else if (write)
+        delay_intern <= writedata[3:0];
+    else if (faster && delay_intern != 4'b0001)
+        delay_intern <= delay_intern - 1'b1;
+    else if (slower && delay_intern != 4'b1111)
+        delay_intern <= delay_intern + 1'b1;
+end
+
+endmodule
+{% endhighlight %}
+
+You'll see that I have added a "write" and 8-bit "writedata" input.
+When "write" is asserted high, the stored delay will take the value of
+the lower 4 bits of "writedata". This will allow us to set the delay by
+writing it to this peripheral's memory. Notice that, since this peripheral only
+has one thing that can be written, it does not need an address input.
+
+## Building a System in Qsys
+
+Now that you have an Avalon peripheral, we can hook it up to the processor.
+For this, we will need to use Altera's Qsys tool. You can open Qsys from Quartus
+by going to "Tools" -> "Qsys". You can also click the Qsys icon, third from the
+right on the Quartus toolbar.
+
+When you first start Qsys, the only component in place will be the clock
+and reset controller. We will need to add our processor to this system.
+To do this, open the "Embedded Processors" section in the "Library" window
+at the top left. Then, select "Hard Processor System" and click the "Add"
+button. This will open up a menu where you can select the options for the
+hard processor. Under the "General" section of the "FPGA Interfaces" tab,
+deselect "Enable MPU standby and event signals". In the "AXI Bridges" section,
+change "FPGA-to-HPS interface width" and "HPS-to-FPGA interface width" to "Unused".
+We will only need the lightweight HPS-to-FPGA interface for this project.
+Delete the entry in the "FPGA-to-HPS SDRAM interface" section. Finally,
+go to the "SDRAM" tab and click on the "Memory Parameters" subtab.
+In the "Memory Initialization Options" section, change "ODT Rtt nominal value"
+under "Mode Register 1" to "RZQ/6". Once you've made all these changes,
+you can click "Finish" to add the HPS to the system.
+
+Now you will need to add the delay controller to the system. Since this is
+a custom module, you will first need to create a new qsys component for it.
+Go to the "Library" window and double-click on "New Component". In the newly
+opened window, under the "Component Type" tab, change "Name" and "Display name"
+to "delay\_ctrl". Go to the "Files" tab and click the "+" button under
+"Synthesis Files" to add a new file to this component. Choose the "delay\_ctrl.v"
+file. Once you have added the file, click "Analyze Synthesis Files" to check
+the file for syntax errors and pull out the signals. Now go to the "Signals"
+tab, where you will indicate the purpose of the signals in the module.
+Make sure that the "write" and "writedata" signals are on an avalon slave
+interface called "avalon\_slave\_0" and that the signal types are "write"
+and "writedata", respectively. Make sure "clk" and "reset" are on "clock" and
+"reset" interfaces with signal types "clock" and "reset" respectively.
+Change the interface for "faster" to "new Conduit". This will create an
+interface called "conduit\_end". Assign "slower" and "delay" to also be on
+the "conduit\_end" interface. The conduit interface type means that the
+signals will not be used internally by the Qsys interconnect and will instead
+be exported out to the top-level. Change the signal type for all of the conduit
+signals to "export". Now go to the "Interfaces" tab. Make sure there are
+four interfaces: "clock", "reset", "conduit\_end", and "avalon\_slave\_0".
+If there are others, you can remove then using "Remove Interfaces with no Signals".
+Make sure "reset" has "clock" as its associated clock. Make sure that "avalon\_slave\_0"
+has "clock" as its associated clock and "reset" as its associated reset.
+Finally, press "Finish" and save this component. You should see a new file
+called "delay\_ctrl\_hw.tcl" in your project directory and a component named
+"delay\_ctrl" under "Project" in the library window. Add this component to
+your system. You can just press "Finish" as there are no options.
