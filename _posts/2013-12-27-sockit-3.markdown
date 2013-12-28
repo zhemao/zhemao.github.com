@@ -287,8 +287,176 @@ Your final `sockit_test.v` file should look like
 
 Now that you've added the system, you have to make the pin assignments for
 the new inputs. Fortunately, Qsys generates a Tcl script which can add these
-assignments automatically. First, run Analysis and Synthesis and make sure
-it passes. Once this is done, open "Tools" -> "Tcl Scripts" in the Quartus
-menu. The script you need is at
+assignments automatically. First, run Analysis and Synthesis so that Quartus
+can determine what the new pins are. Once this is done, open
+"Tools" -> "Tcl Scripts" in the Quartus menu. The script you need is at
 "soc\_system/synthesis/submodules/hps\_sdram\_p0\_pin\_assignments.tcl".
 Once the script has run, you can run the full compilation.
+
+## Programming the FPGA from HPS
+
+Since we will be using the HPS a lot, it's useful to know how to program the
+FPGA from the HPS. This way, you won't have to keep switching the USB cable
+between the UART to the USB Blaster. First, we need to convert our .sof file
+into a raw binary file. To do this, you can use the `quartus_cdf` tool.
+Run the following command from your project directory.
+
+    quartus_cdf -c output_files/sockit_test.sof output_files/sockit_test.rbf
+
+Then copy the "sockit\_test.rbf" file to the "/root" folder of the Linux
+partition on your SD card. Then, boot the HPS and login through the serial.
+You can then run the following command to program the FPGA.
+
+    dd if=sockit_test.rpf of=/dev/fpga0
+
+You should see the FPGA LEDs begin to blink at this point.
+Be careful that you do not program the FPGA in this way when the FPGA-to-HPS
+or HPS-to-FPGA bridges are enabled. When you first boot up the board, the
+bridges are disabled by default, but later we will switch one of the
+bridges on. You should always make sure to disable any bridges you've enabled
+before you program the FPGA again. The following sequence of commands will
+disable all the bridges on the Cyclone V.
+
+    echo 0 > /sys/class/fpga-bridge/fpga2hps/enable
+    echo 0 > /sys/class/fpga-bridge/hps2fpga/enable
+    echo 0 > /sys/class/fpga-bridge/lwhps2fpga/enable
+
+Echoing 1 to the sysfs files will re-enable the bridges. You can also run
+[this script](https://github.com/zhemao/sockit_test/blob/master/software/hps_scripts/program_fpga.sh)
+to disable the bridges, program the fpga, and re-enable the bridges.
+
+## Setting the Delay from the HPS
+
+And now, the final step: controlling the delay from software. To do this,
+you will have to write to the base address of the "delay\_ctrl" peripheral.
+This peripheral is connected to the lightweight HPS-to-FPGA bridge.
+The lightweight bridge's region of memory begins at address 0xff200000, so to
+find the address of an FPGA peripheral, simply add the peripheral's offset as
+shown by Qsys to that address. In our case, the "delay\_ctrl" peripheral was
+assigned the offset 0x00000000, so the full address is simply 0xff200000.
+
+The Linux kernel we are running uses [virtual memory](https://en.wikipedia.org/wiki/Virtual_memory),
+so we cannot directly write to address 0xff200000 from a userspace process,
+since that physical address is not mapped into the process's address space.
+The proper way to expose the "delay\_ctrl" peripheral is to write a kernel
+module, which I will discuss in my next post. For now, we will use a simpler
+method, which is to use the `mmap` system call on the "/dev/mem" device file,
+which represents physical memory, to map the HPS-to-FPGA bridge's memory
+into the process memory.
+
+{% highlight c %}
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+
+#define PAGE_SIZE 4096
+#define LWHPS2FPGA_BRIDGE_BASE 0xff200000
+#define BLINK_OFFSET 0x0
+
+volatile unsigned char *blink_mem;
+void *bridge_map;
+
+int main(int argc, char *argv[])
+{
+	int fd, ret = EXIT_FAILURE;
+	unsigned char value;
+	off_t blink_base = LWHPS2FPGA_BRIDGE_BASE;
+
+	if (argc < 2) {
+		fprintf(stderr, "Usage: %s number\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	/* check the bounds of the value being set */
+	value = atoi(argv[1]);
+	if (value < 1 || value > 15) {
+		fprintf(stderr, "Invalid delay setting."
+				"Delay must be between 1 and 15, inclusive.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* open the memory device file */
+	fd = open("/dev/mem", O_RDWR|O_SYNC);
+	if (fd < 0) {
+		perror("open");
+		exit(EXIT_FAILURE);
+	}
+
+	/* map the LWHPS2FPGA bridge into process memory */
+	bridge_map = mmap(NULL, PAGE_SIZE, PROT_WRITE, MAP_SHARED,
+				fd, blink_base);
+	if (bridge_map == MAP_FAILED) {
+		perror("mmap");
+		goto cleanup;
+	}
+
+	/* get the delay_ctrl peripheral's base address */
+	blink_mem = (unsigned char *) (bridge_map + BLINK_OFFSET);
+
+	/* write the value */
+	*blink_mem = value;
+
+	if (munmap(bridge_map, PAGE_SIZE) < 0) {
+		perror("munmap");
+		goto cleanup;
+	}
+
+	ret = 0;
+
+cleanup:
+	close(fd);
+	return ret;
+}
+{% endhighlight %}
+
+Ignoring all of the error-handling and setup code, the important parts of
+the program are the following.
+
+{% highlight c %}
+bridge_map = mmap(NULL, PAGE_SIZE, PROT_WRITE, MAP_SHARED,
+			fd, blink_base);
+blink_mem = (unsigned char *) (bridge_map + BLINK_OFFSET);
+*blink_mem = value;
+{% endhighlight %}
+
+The `mmap` call maps a single page of memory beginning at 0xff200000 into the
+process's memory space. The first argument to `mmap` is the virtual memory
+address we want the mapped memory to start at. By leaving it null, we allow
+the kernel to use the next memory address available. The second argument is
+the size of the region we want mapped. The size will always be a multiple of
+the page size (on Linux, this is 4 kB or 4096 bytes), so we specify the size
+of a single page even though we only need a byte.
+
+The second line calculates the base address of the "delay\_ctrl" peripheral.
+In this case, `BLINK_OFFSET` is 0, so the addition isn't really necessary,
+but it's good to use named constants.
+
+Finally, the coup-de-grace, the third line writes to the memory address,
+setting the value of the `delay_intern` signal in the "delay\_ctrl" module.
+
+You can find the source code and a Makefile in the
+[software/blinker_us](https://github.com/zhemao/sockit_test/tree/master/software/blinker_us)
+folder in the git repository. Compiling it will produce a "blinker" ARM
+executable, which can be copied to the SD card. The program can be run like so...
+
+{% highlight bash %}
+# enable the lwhps2fpga bridge
+echo 1 > /sys/class/fpga-bridge/lwhps2fpga/enable
+# make it blink fast
+./blinker 1
+# make it blink slow
+./blinker 15
+{% endhighlight %}
+
+## Conclusion
+
+And now you've seen it all, from hardware to software. In my next post, we'll
+clean things up a bit and write a kernel module to handle the writes to
+the HPS-to-FPGA bridge.
+
+[<- Part 2](/blog/2013/12/24/sockit-2.html)
