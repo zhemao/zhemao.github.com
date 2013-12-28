@@ -255,3 +255,4 @@ working on an embedded platform (excluding building and installing U-boot).
 Next time, we'll look at how the CPU and FPGA can communicate.
 
 [<- Part 1](/blog/2013/12/22/sockit-1.html)
+[Part 3 ->](/blog/2013/12/27/sockit-3.html)
