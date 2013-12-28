@@ -12,6 +12,8 @@ To do this, we will use Qsys, a system integration tool from Altera that
 can automatically generate interconnect logic to hook up different hardware
 modules.
 
+Hardware descriptions and C code can be found on [Github](https://github.com/zhemao/sockit_test).
+
 ## A Brief Aside on Memory-Mapped IO
 
 Before we begin, it's useful to go over exactly how software running on
