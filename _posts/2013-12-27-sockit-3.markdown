@@ -113,43 +113,182 @@ right on the Quartus toolbar.
 
 When you first start Qsys, the only component in place will be the clock
 and reset controller. We will need to add our processor to this system.
-To do this, open the "Embedded Processors" section in the "Library" window
+
+### Adding the HPS
+
+Open the "Embedded Processors" section in the "Library" window
 at the top left. Then, select "Hard Processor System" and click the "Add"
 button. This will open up a menu where you can select the options for the
-hard processor. Under the "General" section of the "FPGA Interfaces" tab,
-deselect "Enable MPU standby and event signals". In the "AXI Bridges" section,
-change "FPGA-to-HPS interface width" and "HPS-to-FPGA interface width" to "Unused".
-We will only need the lightweight HPS-to-FPGA interface for this project.
-Delete the entry in the "FPGA-to-HPS SDRAM interface" section. Finally,
-go to the "SDRAM" tab and click on the "Memory Parameters" subtab.
-In the "Memory Initialization Options" section, change "ODT Rtt nominal value"
-under "Mode Register 1" to "RZQ/6". Once you've made all these changes,
-you can click "Finish" to add the HPS to the system.
+hard processor. You will need to make the following changes.
+
+ 1. Under the "General" section of the "FPGA Interfaces" tab,
+    deselect "Enable MPU standby and event signals".
+ 2. In the "AXI Bridges" section, change "FPGA-to-HPS interface width" and
+    "HPS-to-FPGA interface width" to "Unused". We will only need the lightweight
+    HPS-to-FPGA interface for this project.
+ 3. Delete the entry in the "FPGA-to-HPS SDRAM interface" section.
+ 4. Go to the "SDRAM" tab and click on the "Memory Parameters" subtab.
+ 5. In the "Memory Initialization Options" section, change "ODT Rtt nominal value"
+    under "Mode Register 1" to "RZQ/6".
+
+Once you've made all these changes, you can click "Finish" to add the HPS to
+the system.
+
+### Creating and Adding the Delay Controller
 
 Now you will need to add the delay controller to the system. Since this is
 a custom module, you will first need to create a new qsys component for it.
 Go to the "Library" window and double-click on "New Component". In the newly
-opened window, under the "Component Type" tab, change "Name" and "Display name"
-to "delay\_ctrl". Go to the "Files" tab and click the "+" button under
-"Synthesis Files" to add a new file to this component. Choose the "delay\_ctrl.v"
-file. Once you have added the file, click "Analyze Synthesis Files" to check
-the file for syntax errors and pull out the signals. Now go to the "Signals"
-tab, where you will indicate the purpose of the signals in the module.
-Make sure that the "write" and "writedata" signals are on an avalon slave
-interface called "avalon\_slave\_0" and that the signal types are "write"
-and "writedata", respectively. Make sure "clk" and "reset" are on "clock" and
-"reset" interfaces with signal types "clock" and "reset" respectively.
-Change the interface for "faster" to "new Conduit". This will create an
-interface called "conduit\_end". Assign "slower" and "delay" to also be on
-the "conduit\_end" interface. The conduit interface type means that the
-signals will not be used internally by the Qsys interconnect and will instead
-be exported out to the top-level. Change the signal type for all of the conduit
-signals to "export". Now go to the "Interfaces" tab. Make sure there are
-four interfaces: "clock", "reset", "conduit\_end", and "avalon\_slave\_0".
-If there are others, you can remove then using "Remove Interfaces with no Signals".
-Make sure "reset" has "clock" as its associated clock. Make sure that "avalon\_slave\_0"
-has "clock" as its associated clock and "reset" as its associated reset.
-Finally, press "Finish" and save this component. You should see a new file
-called "delay\_ctrl\_hw.tcl" in your project directory and a component named
+opened window, select the following options.
+
+ 1.  Under the "Component Type" tab, change "Name" and "Display name"
+     to "delay\_ctrl".
+ 2.  Go to the "Files" tab and click the "+" button under
+     "Synthesis Files" to add a new file to this component.
+     Choose the "delay\_ctrl.v" file.
+ 3.  Click "Analyze Synthesis Files" to check the file for syntax errors and
+     pull out the signals.
+ 4.  Go to the "Signals" tab, where you will indicate the purpose of the signals
+     in the module.
+ 5.  Make sure that the "write" and "writedata" signals are on an avalon slave
+     interface called "avalon\_slave\_0" and that the signal types are "write"
+     and "writedata", respectively.
+ 6.  Make sure "clk" and "reset" are on "clock" and "reset" interfaces with
+     signal types "clock" and "reset" respectively.
+ 7.  Change the interface for "faster" to "new Conduit". This will create an
+     interface called "conduit\_end".
+ 8.  Assign "slower" and "delay" to also be on the "conduit\_end" interface.
+     The conduit interface type means that the signals will not be used
+     internally by the Qsys interconnect and will instead be exported out to
+     the top-level.
+ 9.  Change the signal type for all of the conduit signals to "export".
+ 10. Go to the "Interfaces" tab. Make sure there are four interfaces:
+     "clock", "reset", "conduit\_end", and "avalon\_slave\_0".
+     If there are others, you can remove then using
+     "Remove Interfaces with no Signals".
+ 11. Make sure "reset" has "clock" as its associated clock.
+ 12. Make sure that "avalon\_slave\_0" has "clock" as its associated clock and
+     "reset" as its associated reset.
+
+Press "Finish" and save this component. You should see a new file called
+"delay\_ctrl\_hw.tcl" in your project directory and a component named
 "delay\_ctrl" under "Project" in the library window. Add this component to
-your system. You can just press "Finish" as there are no options.
+your system. You can just press "Finish" in the add dialog as there are no options.
+
+### Connecting the Components
+
+Now that you've placed all of the components, you must connect all the
+interfaces together. All of the possible connections are indicated by
+light grey lines. To make an actual connection, simply click on the empty
+bubbles at the intersections of lines. A connection which is actually made
+will turn black and the bubble will be filled in.
+
+ 1. Double-click in the "Export" column for the "clk\_in" signal under the
+    "clk\_0" component and export it as "clk".
+ 2. Double-click to export the "clk\_in\_reset" signal as "reset".
+ 3. Connect the "clk" output of the "clk\_0" component to the
+    "h2f\_lw\_axi\_clock" input in "hps\_0" and to the "clock" input of
+    "delay\_ctrl\_0".
+ 4. Connect the "clk\_reset" output of "clk\_0" to "h2f\_reset" of "hps\_0"
+    and to "reset" of "delay\_ctrl\_0".
+ 5. Connect "h2f\_lw\_axi\_master" of "hps\_0" to "avalon\_slave\_0" of
+    "delay\_ctrl\_0".
+ 6. Export "memory" of "hps\_0" as "memory"
+ 7. Export "conduit\_end" of "delay\_ctrl\_0" as "delay\_ctrl".
+
+In the end, your "System contents" window should look something like this.
+
+![Qsys Connections](http://i.imgur.com/QE4ZHgW.png?1)
+
+You have now finished the system, so save it as "soc\_system.qsys".
+You can now generate the system by clicking "Generate" -> "Generate" from
+the menu. In the "Generation" dialog, make sure "Create HDL design files
+for synthesis" is set to Verilog. You can also change the "Output Directory"
+to a directory of your choosing. By default, it will be a subdirectory of
+your project directory called "soc\_system". Press the "Generate" button,
+and Qsys will begin producing Verilog files for this system. Once the system
+finishes generation successfully, you can close Qsys.
+
+## Adding Qsys System to Quartus Project
+
+Now that we have a generated Qsys system, we will need to add it to our
+Quartus project so that it can be compiled into the .sof. Since we have
+included "delay\_ctrl.v" in the system, we can remove it from the project.
+In its place, we will add the system, which has been generated at
+"soc\_system/synthesis/soc\_system.qip". You can add this file to your project
+by going to the "Files" tab of the "Project Navigator" window on the left,
+right-clicking on the "Files" folder icon, and choosing "Add/Remove Files in
+Project".
+
+Once you have added "soc\_system" to the project, you must add it to the
+top-level file, "sockit\_test". First, the top-level inputs will have to
+change in order to accomodate the exported "memory" interface of the system.
+Change the `module` declaration of sockit\_test to the following.
+
+{% highlight verilog %}
+module sockit_test (
+    input         CLOCK_50,
+    input  [3:0]  KEY,
+    output [3:0]  LED,
+
+    output [14:0] hps_memory_mem_a,
+    output [2:0]  hps_memory_mem_ba,
+    output        hps_memory_mem_ck,
+    output        hps_memory_mem_ck_n,
+    output        hps_memory_mem_cke,
+    output        hps_memory_mem_cs_n,
+    output        hps_memory_mem_ras_n,
+    output        hps_memory_mem_cas_n,
+    output        hps_memory_mem_we_n,
+    output        hps_memory_mem_reset_n,
+    inout  [39:0] hps_memory_mem_dq,
+    inout  [4:0]  hps_memory_mem_dqs,
+    inout  [4:0]  hps_memory_mem_dqs_n,
+    output        hps_memory_mem_odt,
+    output [4:0]  hps_memory_mem_dm,
+    input         hps_memory_oct_rzqin
+);
+{% endhighlight %}
+
+Then, delete the `delay_ctrl` port mapping from the body of `sockit_test` and
+replace it with a port mapping for `soc_system`.
+
+{% highlight verilog %}
+soc_system soc (
+    .delay_ctrl_delay (delay),
+    .delay_ctrl_slower (key_os[0]),
+    .delay_ctrl_faster (key_os[1]),
+    .memory_mem_a        (hps_memory_mem_a),
+    .memory_mem_ba       (hps_memory_mem_ba),
+    .memory_mem_ck       (hps_memory_mem_ck),
+    .memory_mem_ck_n     (hps_memory_mem_ck_n),
+    .memory_mem_cke      (hps_memory_mem_cke),
+    .memory_mem_cs_n     (hps_memory_mem_cs_n),
+    .memory_mem_ras_n    (hps_memory_mem_ras_n),
+    .memory_mem_cas_n    (hps_memory_mem_cas_n),
+    .memory_mem_we_n     (hps_memory_mem_we_n),
+    .memory_mem_reset_n  (hps_memory_mem_reset_n),
+    .memory_mem_dq       (hps_memory_mem_dq),
+    .memory_mem_dqs      (hps_memory_mem_dqs),
+    .memory_mem_dqs_n    (hps_memory_mem_dqs_n),
+    .memory_mem_odt      (hps_memory_mem_odt),
+    .memory_mem_dm       (hps_memory_mem_dm),
+    .memory_oct_rzqin    (hps_memory_oct_rzqin),
+
+    .clk_clk (main_clk),
+    .reset_reset_n (!key_os[3])
+);
+{% endhighlight %}
+
+Your final `sockit_test.v` file should look like
+[this](https://github.com/zhemao/sockit_test/blob/master/rtl/sockit_test.v)
+
+## Adding Pin Assignments and Compiling Project
+
+Now that you've added the system, you have to make the pin assignments for
+the new inputs. Fortunately, Qsys generates a Tcl script which can add these
+assignments automatically. First, run Analysis and Synthesis and make sure
+it passes. Once this is done, open "Tools" -> "Tcl Scripts" in the Quartus
+menu. The script you need is at
+"soc\_system/synthesis/submodules/hps\_sdram\_p0\_pin\_assignments.tcl".
+Once the script has run, you can run the full compilation.
