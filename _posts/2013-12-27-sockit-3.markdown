@@ -466,3 +466,4 @@ clean things up a bit and write a kernel module to handle the writes to
 the HPS-to-FPGA bridge.
 
 [<- Part 2](/blog/2013/12/24/sockit-2.html)
+[Part 4 ->](/blog/2013/12/29/sockit-4.html)

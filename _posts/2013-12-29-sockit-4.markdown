@@ -334,3 +334,5 @@ So far, we have been working with a rather trivial example of what the FPGA
 can do. If you're interesting in FPGAs, you are probably more interested in
 getting them to do efficient parallel computation. In my next post, I will
 introduce a more complex hardware module that will perform such computation.
+
+[<- Part 3](/blog/2013/12/27/sockit-3.html)
