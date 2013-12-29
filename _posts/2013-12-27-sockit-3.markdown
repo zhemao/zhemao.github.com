@@ -440,6 +440,10 @@ but it's good to use named constants.
 
 Finally, the coup-de-grace, the third line writes to the memory address,
 setting the value of the `delay_intern` signal in the "delay\_ctrl" module.
+Notice that `blink_mem` is declared with the `volatile` keyword. This tells
+the compiler that the value stored at this memory address can change without
+being written to from software. This disables certain compiler optimizations
+that can cause incorrect behavior.
 
 You can find the source code and a Makefile in the
 [software/blinker_us](https://github.com/zhemao/sockit_test/tree/master/software/blinker_us)
