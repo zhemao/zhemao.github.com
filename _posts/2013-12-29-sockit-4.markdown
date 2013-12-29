@@ -196,7 +196,7 @@ Now let's add code to our module to make it do something useful.
 
 Linux, being a UNIX-like operating system, subscribes to the philosophy of
 "everything is a file". That is, the standard way for userspace to communicate
-with drivers through file IO operations. For reading and writing small bits
+with drivers is through file IO operations. For reading and writing small bits
 of configuration information to driver modules, the Linux kernel provides a
 filesystem called [Sysfs](https://www.kernel.org/doc/Documentation/filesystems/sysfs.txt),
 which is mounted at "/sys" in your filesystem tree.
@@ -214,10 +214,10 @@ static struct device_driver blinker_driver = {
 };
 {% endhighlight %}
 
-Device drivers must have a name and a bus. The bus is the way the device the
-driver controls is connected to the CPU. This could be PCI, USB, or some other
-method. Since our blinker module can be accessed directly from system memory,
-we will use the generic [platform](https://www.kernel.org/doc/Documentation/driver-model/platform.txt)
+Device drivers must have a name and a bus. The bus is what connects the device
+to the CPU. This could be PCI, USB, or some other method. Since our blinker
+module can be accessed directly from system memory, we will use the generic
+[platform](https://www.kernel.org/doc/Documentation/driver-model/platform.txt)
 bus type.
 
 We will also need to declare a `driver_attribute` struct, which has function
@@ -237,14 +237,14 @@ ssize_t blinker_store(struct device_driver *drv, const char *buf, size_t count)
 }
 
 static DRIVER_ATTR(blinker, S_IWUSR, blinker_show, blinker_store);
-    
+
 {% endhighlight %}
 
 Since our blinker module is write-only, we don't need to do anything in
 `blinker_show`. The `DRIVER_ATTR` macro helps us declare a `driver_attr` struct.
 The arguments to the macro are name, permissions mode, show function, and
 store function. This will declare a struct called `driver_attr_blinker`.
-The mode can be any combination of `S_IWUSR`, meaning the user has a write
+The mode can be any combination of `S_IWUSR`, meaning the user has write
 access, and `S_IRUGO`, meaning everyone has read access. Again, we want our
 sysfs file to be write-only, so we only give `S_IWUSR`.
 
@@ -271,10 +271,11 @@ But how do we make this function do what we want it to?
 
 ## Accessing IO Memory
 
-As we did last time, we will write a byte to memory at address 0xff200000.
-However, this address is not yet mapped into the kernel's address space.
-The kernel provides functions for properly mapping and accessing the memory
-space for peripherals, which is termed IO memory.
+As in the previous post, we will set the delay by writing a byte to physical
+memory at address 0xff200000. However, this address is not yet mapped into the
+kernel's address space, so we will have to that first. Fortunately, the kernel
+provides functions for properly mapping and accessing the memory space for
+peripherals, which is termed IO memory.
 
 First, we will need to request exclusive access to the memory region we want
 to write to.
@@ -325,10 +326,10 @@ module.
 
 ## Conclusion
 
-So now you know how to write a kernel driver. Sort of. There are a lot more
+So now you know how to write a basic device driver. There are a lot more
 things that come into play when developing a driver, and I recommend reading
 [Linux Device Drivers](http://www.makelinux.net/ldd3/) for reference on how
-to accomplish certain things in your driver.
+to accomplish certain things.
 
 So far, we have been working with a rather trivial example of what the FPGA
 can do. If you're interesting in FPGAs, you are probably more interested in
