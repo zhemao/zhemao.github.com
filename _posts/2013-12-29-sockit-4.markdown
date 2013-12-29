@@ -1,0 +1,336 @@
+---
+title: Exploring the Arrow SoCKit Part IV - Writing a Linux Device Driver
+layout: default
+category: blog
+---
+
+Now that we are able to control our blinker module from software, we should
+write a device driver that sets up an interface between our userspace code
+and the hardware. This allows us to avoid having to mmap "/dev/mem", which
+is hacky and unsafe.
+
+Ideally, we would like our driver to export a file in sysfs (the /sys filesystem)
+that we can write a number to and have that number set as the delay value in
+our hardware.
+
+So here is the code. We will go through it bit by bit in this post.
+
+{% highlight c %}
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/device.h>
+#include <linux/platform_device.h>
+#include <linux/uaccess.h>
+#include <linux/ioport.h>
+#include <linux/io.h>
+
+#define BLINKER_BASE 0xff200000
+#define BLINKER_SIZE PAGE_SIZE
+
+void *blink_mem;
+
+static struct device_driver blinker_driver = {
+	.name = "blinker",
+	.bus = &platform_bus_type,
+};
+
+ssize_t blinker_show(struct device_driver *drv, char *buf)
+{
+	return 0;
+}
+
+ssize_t blinker_store(struct device_driver *drv, const char *buf, size_t count)
+{
+	u8 delay;
+
+	if (buf == NULL) {
+		pr_err("Error, string must not be NULL\n");
+		return -EINVAL;
+	}
+
+	if (kstrtou8(buf, 10, &delay) < 0) {
+		pr_err("Could not convert string to integer\n");
+		return -EINVAL;
+	}
+
+	if (delay < 1 || delay > 15) {
+		pr_err("Invalid delay %d\n", delay);
+		return -EINVAL;
+	}
+
+	iowrite8(delay, blink_mem);
+
+	return count;
+}
+
+static DRIVER_ATTR(blinker, S_IWUSR, blinker_show, blinker_store);
+
+MODULE_LICENSE("Dual BSD/GPL");
+
+static int __init blinker_init(void)
+{
+	int ret;
+	struct resource *res;
+
+	ret = driver_register(&blinker_driver);
+        if (ret < 0)
+		return ret;
+
+	ret = driver_create_file(&blinker_driver, &driver_attr_blinker);
+	if (ret < 0) {
+		driver_unregister(&blinker_driver);
+		return ret;
+	}
+
+	res = request_mem_region(BLINKER_BASE, BLINKER_SIZE, "blinker");
+	if (res == NULL) {
+		driver_remove_file(&blinker_driver, &driver_attr_blinker);
+		driver_unregister(&blinker_driver);
+		return -EBUSY;
+	}
+
+	blink_mem = ioremap(BLINKER_BASE, BLINKER_SIZE);
+	if (blink_mem == NULL) {
+		driver_remove_file(&blinker_driver, &driver_attr_blinker);
+		driver_unregister(&blinker_driver);
+		release_mem_region(BLINKER_BASE, BLINKER_SIZE);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+static void __exit blinker_exit(void)
+{
+	driver_remove_file(&blinker_driver, &driver_attr_blinker);
+	driver_unregister(&blinker_driver);
+	release_mem_region(BLINKER_BASE, BLINKER_SIZE);
+	iounmap(blink_mem);
+}
+
+module_init(blinker_init);
+module_exit(blinker_exit);
+{% endhighlight %}
+
+You can find the module code and Makefile on [Github](https://github.com/zhemao/sockit_test/tree/master/software/blinker).
+This code was based off of material in [Linux Device Drivers, 3rd Edition](http://www.makelinux.net/ldd3/),
+specifically chapters 9 and 14. This is a really great book on writing Linux
+device drivers written by core kernel maintainers. I highly recommend looking
+at it if you're interested in learning more.
+
+## Setting up the Module
+
+When creating a Linux kernel module, we first need to register init and exit
+functions, which are run when the module is loaded and unloaded, respectively.
+In our module, the functions are called `blinker_init` and `blinker_exit`.
+
+{% highlight c %}
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+
+MODULE_LICENSE("Dual BSD/GPL");
+
+static int __init blinker_init(void)
+{
+    /* ... */
+    return 0;
+}
+
+static void __exit blinker_exit(void)
+{
+    /* ... */
+}
+
+module_init(blinker_init);
+module_exit(blinker_exit);
+{% endhighlight %}
+
+We register the init and exit functions using the `module_init` and `module_exit`
+macros. We also need the `MODULE_LICENSE` module to tell the kernel what
+license we wish to put our module under.
+
+Just the above code would give you a valid kernel module, albeit one that does
+absolutely nothing. But how do we build a kernel module? We have to create
+a Makefile compatible with the Linux kernel's build system. Such a Makefile,
+assuming you have named your file blinker.c as I have, looks like this.
+
+{% highlight make %}
+obj-m := blinker.o
+{% endhighlight %}
+
+To compile it, you'd run something like
+
+{% highlight bash %}
+armmake -C ~/path/to/linux-socfpga M=$PWD modules
+{% endhighlight %}
+
+You should replace the path after the "-C" flag with the path to which you
+cloned the Linux kernel sources. This will run make in the kernel source
+folder and tell it to build a module in your current directory.
+You can add a command to your Makefile to run this command for you.
+
+{% highlight make %}
+KERNEL_SRC_DIR=/home/zhehao/programs/others/linux-socfpga
+PWD=$(shell pwd)
+
+all:
+	make ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf- -C $(KERNEL_SRC_DIR) \
+		M=$(PWD) modules
+{% endhighlight %}
+
+The output of the build will be a "kernel object" file called "blinker.ko".
+You can copy this over to your SD card and load it into the running kernel
+using the following command.
+
+    insmod blinker.ko
+
+You can then unload it using
+
+    rmmod blinker
+
+Now let's add code to our module to make it do something useful.
+
+## Exporting Sysfs File
+
+Linux, being a UNIX-like operating system, subscribes to the philosophy of
+"everything is a file". That is, the standard way for userspace to communicate
+with drivers through file IO operations. For reading and writing small bits
+of configuration information to driver modules, the Linux kernel provides a
+filesystem called [Sysfs](https://www.kernel.org/doc/Documentation/filesystems/sysfs.txt),
+which is mounted at "/sys" in your filesystem tree.
+
+To get a driver entry in Sysfs, we need to declare and register a `device_driver`
+struct.
+
+{% highlight c %}
+#include <linux/device.h>
+#include <linux/platform_device.h>
+
+static struct device_driver blinker_driver = {
+	.name = "blinker",
+	.bus = &platform_bus_type,
+};
+{% endhighlight %}
+
+Device drivers must have a name and a bus. The bus is the way the device the
+driver controls is connected to the CPU. This could be PCI, USB, or some other
+method. Since our blinker module can be accessed directly from system memory,
+we will use the generic [platform](https://www.kernel.org/doc/Documentation/driver-model/platform.txt)
+bus type.
+
+We will also need to declare a `driver_attribute` struct, which has function
+pointers to "show" and "store" functions that are run when userspace reads
+from or writes to the sysfs file, respectively.
+
+{% highlight c %}
+ssize_t blinker_show(struct device_driver *drv, char *buf)
+{
+	return 0;
+}
+
+ssize_t blinker_store(struct device_driver *drv, const char *buf, size_t count)
+{
+    /* ... */
+    return count;
+}
+
+static DRIVER_ATTR(blinker, S_IWUSR, blinker_show, blinker_store);
+    
+{% endhighlight %}
+
+Since our blinker module is write-only, we don't need to do anything in
+`blinker_show`. The `DRIVER_ATTR` macro helps us declare a `driver_attr` struct.
+The arguments to the macro are name, permissions mode, show function, and
+store function. This will declare a struct called `driver_attr_blinker`.
+The mode can be any combination of `S_IWUSR`, meaning the user has a write
+access, and `S_IRUGO`, meaning everyone has read access. Again, we want our
+sysfs file to be write-only, so we only give `S_IWUSR`.
+
+We register our driver in the init function like so ...
+
+{% highlight c %}
+ret = driver_register(&blinker_driver);
+/* error handling ... */
+ret = driver_create_file(&blinker_driver, &driver_attr_blinker);
+/* error handling ... */
+{% endhighlight %}
+
+Later, in the module exit function, we will unregister the driver.
+
+{% highlight c %}
+driver_remove_file(&blinker_driver, &driver_attr_blinker);
+driver_unregister(&blinker_driver);
+{% endhighlight %}
+
+Now, when the kernel module is loaded, a file will be created at
+"/sys/bus/platform/drivers/blinker/blinker".
+Writing to this file will trigger the `blinker_store` function.
+But how do we make this function do what we want it to?
+
+## Accessing IO Memory
+
+As we did last time, we will write a byte to memory at address 0xff200000.
+However, this address is not yet mapped into the kernel's address space.
+The kernel provides functions for properly mapping and accessing the memory
+space for peripherals, which is termed IO memory.
+
+First, we will need to request exclusive access to the memory region we want
+to write to.
+
+{% highlight c %}
+#define BLINKER_BASE 0xff200000
+#define BLINKER_SIZE PAGE_SIZE
+
+res = request_mem_region(BLINKER_BASE, BLINKER_SIZE, "blinker");
+if (res == NULL) {
+    /* do some error handling */
+}
+{% endhighlight %}
+
+`BLINKER_BASE` is set to the base address we want, and `BLINKER_SIZE` is set
+to the page size. As with the `mmap` system call, we can only get memory a page
+at a time, so it makes sense to just request a whole page. Now that we know
+we have exclusive access, we need to map the address into virtual memory.
+
+{% highlight c %}
+void *blink_mem;
+
+blink_mem = ioremap(BLINKER_BASE, BLINKER_SIZE);
+if (blink_mem == NULL) {
+        /* error handling */
+}
+{% endhighlight %}
+
+We can now write to `blink_mem` to set the hardware delay. Of course, it's
+not considered proper to just do `*blink_mem = delay`. Instead, we should
+use the `iowrite*` functions. In our case, we are writing a single byte,
+so we use `iowrite8`.
+
+{% highlight c %}
+u8 delay;
+if (kstrtou8(buf, 10, &delay) < 0) {
+    /* error handling if buf isn't a number */
+}
+if (delay < 1 || delay > 15) {
+    /* error handling if delay out of bounds */
+}
+iowrite8(delay, blink_mem);
+{% endhighlight %}
+
+Now with the full module, we can write a number between 1 and 15 to
+"/sys/bus/platform/drivers/blinker/blinker" and set the delay in the FPGA
+module.
+
+## Conclusion
+
+So now you know how to write a kernel driver. Sort of. There are a lot more
+things that come into play when developing a driver, and I recommend reading
+[Linux Device Drivers](http://www.makelinux.net/ldd3/) for reference on how
+to accomplish certain things in your driver.
+
+So far, we have been working with a rather trivial example of what the FPGA
+can do. If you're interesting in FPGAs, you are probably more interested in
+getting them to do efficient parallel computation. In my next post, I will
+introduce a more complex hardware module that will perform such computation.
