@@ -74,6 +74,8 @@ This will bring you into the fdisk command prompt. Enter the following commands
     t
     1
     0b
+    n
+    p
     <enter>
     <enter>
     <enter>
