@@ -19,11 +19,11 @@
 <div id="container">
 
 <div id="header">
-<a id="toplink" href="/"/>Howard Mao</a>
+<a id="toplink" href="/"/>{{site.name}}</a>
 </div> <!--header-->
 
 <div id="main">
-  {% if page.title %}
+  {% if page.category != "main" %}
     <h1>{{page.title}}</h1>
   {% endif %}
   {{content}}
