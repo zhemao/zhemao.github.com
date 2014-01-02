@@ -92,3 +92,9 @@ th, td {
   font-weight: bold;
   font-size: 1.2em;
 }
+
+.highlight pre {
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  padding: 5px;
+}
