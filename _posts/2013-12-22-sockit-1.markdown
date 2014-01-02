@@ -1,7 +1,7 @@
 ---
 title: Exploring the Arrow SoCKit Part I - Blinking LEDs
 layout: default
-category: blog
+categories: [blog, fpga]
 ---
 
 In September, I bought one of the new [Arrow SoCKits](http://www.arrownac.com/solutions/sockit/).
@@ -404,4 +404,4 @@ Congratulations, you just programmed an FPGA! In my next post, I will take a
 look at the ARM processor on the Cyclone V and how to install an operating
 system on it.
 
-[Part 2 ->](/blog/2013/12/24/sockit-2.html)
+[Part 2 ->]({% post_url 2013-12-24-sockit-2 %})

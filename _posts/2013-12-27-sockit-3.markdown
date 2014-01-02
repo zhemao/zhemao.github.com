@@ -1,7 +1,7 @@
 ---
 title: Exploring the Arrow SoCKit Part III - Controlling FPGA from Software
 layout: default
-category: blog
+categories: [blog, fpga]
 ---
 
 In part I, I showed you how to load a simple LED example onto the FPGA.
@@ -465,5 +465,5 @@ And now you've seen it all, from hardware to software. In my next post, we'll
 clean things up a bit and write a kernel module to handle the writes to
 the HPS-to-FPGA bridge.
 
-[<- Part 2](/blog/2013/12/24/sockit-2.html)
-[Part 4 ->](/blog/2013/12/29/sockit-4.html)
+[<- Part 2]({% post_url 2013-12-24-sockit-2 %})
+[Part 4 ->]({% post_url 2013-12-29-sockit-4 %})

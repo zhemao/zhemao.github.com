@@ -1,7 +1,7 @@
 ---
 title: Exploring the Arrow SoCKit Part IV - Writing a Linux Device Driver
 layout: default
-category: blog
+categories: [blog, fpga]
 ---
 
 Now that we are able to control our blinker module from software, we should
@@ -336,4 +336,4 @@ can do. If you're interesting in FPGAs, you are probably more interested in
 getting them to do efficient parallel computation. In my next post, I will
 introduce a more complex hardware module that will perform such computation.
 
-[<- Part 3](/blog/2013/12/27/sockit-3.html)
+[<- Part 3]({% post_url 2013-12-27-sockit-3 %})

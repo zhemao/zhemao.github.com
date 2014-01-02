@@ -1,7 +1,7 @@
 ---
 title: Exploring the Arrow SoCKit Part II - Installing Linux
 layout: default
-category: blog
+categories: [blog, fpga]
 ---
 
 In my last post, I showed you how to get a simple FPGA example working on the
@@ -256,5 +256,5 @@ accomplishment. You've now learned the general flow of how to get Linux
 working on an embedded platform (excluding building and installing U-boot).
 Next time, we'll look at how the CPU and FPGA can communicate.
 
-[<- Part 1](/blog/2013/12/22/sockit-1.html)
-[Part 3 ->](/blog/2013/12/27/sockit-3.html)
+[<- Part 1]({% post_url 2013-12-22-sockit-1 %})
+[Part 3 ->]({% post_url 2013-12-27-sockit-3 %})
