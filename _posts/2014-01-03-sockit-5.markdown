@@ -1,0 +1,649 @@
+---
+title: Exploring the Arrow SoCKit Part V - Computing MD5 Checksums on the FPGA
+layout: default
+categories: [blog, fpga]
+---
+
+In parts I-IV of this tutorial series, we looked at how to create a simple
+flashing LED module on the FPGA and control it via software. Now, we will see
+how to use the FPGA to perform computation. To do this, we will take a
+non-trivial algorithm and implement it in Verilog. I have chosen to use the
+MD5 checksum algorithm as the example, since it is relatively easy to
+implement in hardware. Once we have a hardware unit that can compute MD5 sums,
+we can instantiate multiple instances of it and hook them up to the CPU to
+perform brute-force MD5 hash reversal.
+
+I'll be breaking up the development of the MD5 cracker across several blog
+posts, just as I did with the flashing LED example. This post will focus on
+implementing the algorithm. Later posts will discuss verification through
+simulation and control via software.
+
+## The Algorithm
+
+Here is the pseudocode for the MD5 algorithm, taken from Wikipedia.
+
+{% highlight pascal %}
+//Note: All variables are unsigned 32 bit and wrap modulo 2^32 when calculating
+var int[64] s, K
+
+//s specifies the per-round shift amounts
+s[ 0..15] := { 7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22}
+s[16..31] := { 5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20}
+s[32..47] := { 4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23}
+s[48..63] := { 6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21}
+
+//Use binary integer part of the sines of integers (Radians) as constants:
+for i from 0 to 63
+    K[i] := floor(abs(sin(i + 1)) × (2 pow 32))
+end for
+//(Or just use the following table):
+K[ 0.. 3] := { 0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee }
+K[ 4.. 7] := { 0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501 }
+K[ 8..11] := { 0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be }
+K[12..15] := { 0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821 }
+K[16..19] := { 0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa }
+K[20..23] := { 0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8 }
+K[24..27] := { 0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed }
+K[28..31] := { 0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a }
+K[32..35] := { 0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c }
+K[36..39] := { 0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70 }
+K[40..43] := { 0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05 }
+K[44..47] := { 0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665 }
+K[48..51] := { 0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039 }
+K[52..55] := { 0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1 }
+K[56..59] := { 0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1 }
+K[60..63] := { 0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391 }
+
+//Initialize variables:
+var int a0 := 0x67452301   //A
+var int b0 := 0xefcdab89   //B
+var int c0 := 0x98badcfe   //C
+var int d0 := 0x10325476   //D
+
+//Pre-processing: adding a single 1 bit
+append 1 bit to message
+// Notice: the input bytes are considered as bit strings,
+// where the first bit is the most significant bit of the byte.
+
+
+//Pre-processing: padding with zeros
+append 0 bit until message length in bit == 448 (mod 512)
+append length mod (2 pow 64) to message
+
+
+//Process the message in successive 512-bit chunks:
+for each 512-bit chunk of message
+    break chunk into sixteen 32-bit words M[j], 0 <= j <= 15
+//Initialize hash value for this chunk:
+    var int A := a0
+    var int B := b0
+    var int C := c0
+    var int D := d0
+//Main loop:
+    for i from 0 to 63
+        if 0 <= i <= 15 then
+            F := (B and C) or ((not B) and D)
+            g := i
+        else if 16 <= i <= 31
+            F := (D and B) or ((not D) and C)
+            g := (5 * i + 1) mod 16
+        else if 32 <= i <= 47
+            F := B xor C xor D
+            g := (3 * i + 5) mod 16
+        else if 48 <= i <= 63
+            F := C xor (B or (not D))
+            g := (7 * i) mod 16
+        dTemp := D
+        D := C
+        C := B
+        B := B + leftrotate((A + F + K[i] + M[g]), s[i])
+        A := dTemp
+    end for
+//Add this chunk's hash to result so far:
+    a0 := a0 + A
+    b0 := b0 + B
+    c0 := c0 + C
+    d0 := d0 + D
+end for
+
+var char digest[16] := a0 append b0 append c0 append d0 //(Output is in little-endian)
+
+//leftrotate function definition
+leftrotate (x, c)
+    return (x << c) binary or (x >> (32-c));
+{% endhighlight %}
+
+The first decision to be made is what parts of the algorithm will be
+implemented on the FPGA and what will be done in the control code.
+In general, computations with simple control flow that are repeated over and
+over again are a good fit for the FPGA. It's also difficult to get FPGAs to
+handle data that can be variable in size. Therefore, we will implement the
+main loop, which processes a 512-bit chunk of the input, in Verilog.
+The CPU control code can then take care of appropriately padding the input
+and feeding it in chunk-by-chunk to the FPGA.
+
+Now that we have decided *what* to implement, we must figure out how to break
+the computation up into blocks, which can then be implemented as Verilog
+separate modules.
+
+First, it's clear that we will need ROMs for `K` and `s`, as well as a RAM
+for the input `M`. We will also need a module to compute `F`, a unit to compute
+`g`, a left rotater, a 32-bit adder, and finally a state machine to make sure
+the computatation proceeds in the correct order.
+
+## Implementing Memories
+
+The Cyclone V can efficiently implement small memories using on-chip block RAM.
+In order to generate ROMs and RAMs that use the block RAM, we will use the
+Altera MegaWizard tool.
+
+To open MegaWizard, go to "Tools" -> "MegaWizard Plug-In Manager". This will
+allow you to pick from a list of "megafunctions", which are configurable
+hardware IP blocks that can be added to a design. Right now, we are interested
+in the megafunctions in the "Memory Compiler" section.
+
+FPGA block RAM can have two separate sets of address and data signals.
+Since we will be instantiating several many copies of our MD5 unit, it makes
+sense to have them share memory as much as possible, so we will use the 2-port
+ROM for `K` and `s`. In the first options page, select "64" for the number of
+words in the memory. Then choose the correct word size. This should be 32 for
+`K` and 5 for `s`. For "What should the memory block type be", choose "M10K".
+You can skip the section on clocks, since the defaults there are fine.
+On the third page, it will ask you which ports you want to put registers on.
+The registers on the inputs are required, but the registers on the output ports
+are optional. Each set of registers adds a cycle of delay, so deselect placing
+registers on the outputs so that the ROM has only a single cycle delay.
+On the fourth page, it will ask you to provide a file which specifies what
+values will be in the ROM. You can choose to provide either a
+[Memory Initialization File](http://quartushelp.altera.com/13.0/mergedProjects/reference/glossary/def_mif.htm)
+(.mif) or an [Intel hex file](https://en.wikipedia.org/wiki/Intel_HEX)
+(.hex). The former is more human-readable, while the latter can be more easily
+computer-generated. You can find the .mif files for the [K ROM](https://github.com/zhemao/md5cracker/blob/master/romdata/kdata.mif)
+and [s ROM](https://github.com/zhemao/md5cracker/blob/master/romdata/sdata.mif)
+in the Github repository. After you've finished memory intialization, you can
+click "Finish" to generate the Verilog modules for the memory.
+
+You can follow the same procedure to generate the RAM for `M`. Choose the
+2-port RAM in the "Memory Compiler" section. Create a RAM with one read port
+and one write port. The wizard for RAMs has an extra section asking you what
+should happen if you try to read from an address that is being written.
+Choose "I do not care" for this. Also, for RAMs, you do not have to specify
+a memory initialization file.
+
+## Combinational Units
+
+Now that we have our memories, we can look at the combinational logic portions
+of our circuit. First, let's consider the computation for the `F` variable.
+The `F` signal is generated from bitwise combinations of `B`, `C`, and `D`.
+However, the particular operation depends on the value of the 6-bit loop
+counter `i`. You will notice, however, that the only information we need is
+whether it is in one of four equally sized ranges. We can determine this by
+examining only the top two bits of `i`.
+
+{% highlight verilog %}
+module fcalc (
+    input [1:0] sel,
+    input [31:0] b,
+    input [31:0] c,
+    input [31:0] d,
+    output reg [31:0] f
+);
+
+always @(*) begin
+    case (sel)
+        // 0 <= i <= 15
+        2'b00: f <= (b & c) | (~b & d);
+        // 16 <= i <= 31
+        2'b01: f <= (d & b) | (~d & c);
+        // 32 <= i <= 47
+        2'b10: f <= b ^ c ^ d;
+        // 48 <= i <= 63
+        2'b11: f <= c ^ (b | ~d);
+    endcase
+end
+
+endmodule
+{% endhighlight %}
+
+The `&`, `|`, `^`, and `~` operators are bitwise AND, OR, XOR, and NOT
+operations, respectively.
+
+To compute `g`, we have to mutltiply `i` by certain constants, add it to
+certain constants, and then take the result modulo 16. We can simplify this
+by noting that taking the modulus of a binary integer by 16 is the same as
+taking the lowest four bits. We can also simplify our logic based on the
+fact that
+
+    a * i + b == a * (i % 16) + b (mod 16)
+
+That is, multiplying and adding based on the last four bits of `i` and then
+taking the last four bits of the result is the same as multiplying and adding
+by all six bits of `i`.
+
+The final trick we can use is to get rid of multiplication, which is an
+expensive logic operation. What you will notice is that the constants
+we are multiplying by (3, 5, and 7) are all one away from a power of two
+(2, 4, and 8). This is very convenient, since we can easily multiply by powers
+of two by left shifting bits. We can then add or subtract the original number
+from the shifted number to get the final result of the "multiplication".
+Therefore, we can express our multiplications using the following equivalents.
+
+    3 * i = 2 * i + i = i << 1 + i
+    5 * i = 4 * i + i = i << 2 + i
+    7 * i = 8 * i - i = i << 3 - i
+
+The amount by which we shift `i` and the number we add to it will be selected
+based on the two highest bits of `i`, just as we did with the `F` calculator.
+
+{% highlight verilog %}
+module gcalc (
+    input  [5:0] i,
+    output [3:0] g
+);
+
+reg doshift;
+reg sub;
+reg  [1:0] shiftby;
+reg  [2:0] addon;
+
+wire [3:0] shift_res = (doshift) ? i[3:0] << shiftby : 4'b0;
+wire [3:0] mult_res = (sub) ? shift_res - i[3:0] : shift_res + i[3:0];
+assign g = mult_res + addon;
+
+always @(*) begin
+    case (i[5:4])
+        // 0 <= i <= 15
+        2'b00: begin
+            // g = i
+            doshift <= 1'b0;
+            sub <= 1'b0;
+            shiftby <= 2'b0;
+            addon <= 3'd0;
+        end
+        // 16 <= i <= 31
+        2'b01: begin
+            // g = 5 * i + 1
+            doshift <= 1'b1;
+            sub <= 1'b0;
+            shiftby <= 2'b10;
+            addon <= 3'd1;
+        end
+        // 32 <= i <= 47
+        2'b10: begin
+            // g = 3 * i + 5
+            doshift <= 1'b1;
+            sub <= 1'b0;
+            shiftby <= 2'b01;
+            addon <= 3'd5;
+        end
+        // 48 <= i <= 63
+        2'b11: begin
+            // g = 7 * i
+            doshift <= 1'b1;
+            sub <= 1'b1;
+            shiftby <= 2'b11;
+            addon <= 3'd0;
+        end
+    endcase
+end
+
+endmodule
+{% endhighlight %}
+
+Then there is the left rotater, which is fairly straightforward. To express
+a left rotation in verilog, you can double the input, left shift it, and
+then take the top half of the bits.
+
+{% highlight verilog %}
+module leftrotate (
+    input  [31:0] rotin,
+    input  [4:0]  rotby,
+    output [31:0] rotout
+);
+
+wire [63:0] rotmid = ({rotin, rotin} << rotby);
+assign rotout = rotmid[63:32];
+
+endmodule
+{% endhighlight %}
+
+For the adder, we will simply use the verilog `+` operator. Now that we have
+our combinational units, we will need to tie them together to perform the
+inner loop of the computation.
+
+## Sequential Computation
+
+Stateless combinational logic is not enough to perform the computation we
+want. Therefore, we will need a state machine to store intermediate results
+in registers and select the correct inputs for the combinational units.
+In the body of the inner loop of the MD5 algorithm, there are a lot of 32-bit
+additions. However, we would like to reduce the number of 32-bit adders we
+use so as not to use too many logic elements. Fortunately, through clever
+sequencing, there is a way to do the computation in just four cycles using
+only one 32-bit adder.
+
+    Step 0
+        calculate F
+        calculate g
+        t0 = A + K[i]
+    Step 1
+        t1 = F + M[g]
+    Step 2
+        t0 = t0 + t1
+    Step 3
+        A = D
+        B = B + leftrotate(t0, s[i])
+        C = B
+        D = C
+        i = i + 1
+
+These four steps will have to be repeated 64 times, with i incrementing each
+time. Then, at the end, we will need four more cycles to add A, B, C, and D
+onto a0, b0, c0, and d0.
+
+{% highlight verilog %}
+module chunk_cruncher (
+    input clk,
+    input reset,
+    input start,
+    output done,
+
+    output [127:0] digest,
+
+    output [5:0]  iaddr,
+    input  [31:0] kdata,
+    input  [4:0]  sdata,
+
+    output [3:0]  gaddr,
+    input  [31:0] mdata
+);
+
+parameter INITA = 32'h67452301;
+parameter INITB = 32'hefcdab89;
+parameter INITC = 32'h98badcfe;
+parameter INITD = 32'h10325476;
+
+reg [31:0] a0;
+reg [31:0] b0;
+reg [31:0] c0;
+reg [31:0] d0;
+
+reg [31:0] areg;
+reg [31:0] breg;
+reg [31:0] creg;
+reg [31:0] dreg;
+
+assign digest = {d0, c0, b0, a0};
+
+reg [5:0] ireg;
+
+wire [31:0] f;
+reg  [31:0] freg;
+
+reg  [31:0] adda;
+reg  [31:0] addb;
+wire [31:0] adds = adda + addb;
+
+reg [31:0] t0;
+reg [31:0] t1;
+
+wire [31:0] rotated;
+
+wire [31:0] inext = ireg + 1'b1;
+assign iaddr = ireg;
+
+fcalc fc (
+    .sel (ireg[5:4]),
+    .b (breg),
+    .c (creg),
+    .d (dreg),
+    .f (f)
+);
+
+gcalc gc (
+    .i (ireg),
+    .g (gaddr)
+);
+
+leftrotate lr (
+    .rotin (t0),
+    .rotby (sdata),
+    .rotout (rotated)
+);
+
+parameter CRUNCH   = 2'b00;
+parameter FINALIZE = 2'b01;
+parameter FINISHED = 2'b10;
+
+reg [1:0] stage;
+
+assign done = (stage == FINISHED);
+
+reg [1:0] step;
+
+always @(*) begin
+    if (stage == CRUNCH) begin
+        case (step)
+            2'b00: begin
+                adda <= areg;
+                addb <= kdata;
+            end
+            2'b01: begin
+                adda <= freg;
+                addb <= mdata;
+            end
+            2'b10: begin
+                adda <= t0;
+                addb <= t1;
+            end
+            2'b11: begin
+                adda <= breg;
+                addb <= rotated;
+            end
+        endcase
+    end else if (stage == FINALIZE) begin
+        case (step)
+            2'b00: begin
+                adda <= a0;
+                addb <= areg;
+            end
+            2'b01: begin
+                adda <= b0;
+                addb <= breg;
+            end
+            2'b10: begin
+                adda <= c0;
+                addb <= creg;
+            end
+            2'b11: begin
+                adda <= d0;
+                addb <= dreg;
+            end
+        endcase
+    end else begin
+        adda <= 32'd0;
+        addb <= 32'd0;
+    end
+end
+
+always @(posedge clk) begin
+    if (reset) begin
+        a0 <= INITA;
+        b0 <= INITB;
+        c0 <= INITC;
+        d0 <= INITD;
+        ireg <= 6'd00;
+        stage <= FINISHED;
+    end else if (start) begin
+        areg <= a0;
+        breg <= b0;
+        creg <= c0;
+        dreg <= d0;
+        step <= 2'b00;
+        stage <= CRUNCH;
+    end else if (stage == CRUNCH) begin
+        case (step)
+            2'b00: begin
+                freg <= f;
+                // t0 = areg + kdata
+                t0 <= adds;
+                step <= 2'b01;
+            end
+            2'b01: begin
+                // t1 = freg + mdata
+                t1 <= adds;
+                step <= 2'b10;
+            end
+            2'b10: begin
+                // t0 = t0 + t1
+                t0 <= adds;
+                step <= 2'b11;
+                ireg <= inext;
+            end
+            2'b11: begin
+                areg <= dreg;
+                // breg = breg + rotate(t0, sdata)
+                breg <= adds;
+                creg <= breg;
+                dreg <= creg;
+                if (ireg != 6'd0) begin
+                    step <= 2'b00;
+                end else begin
+                    step <= 2'b00;
+                    stage <= FINALIZE;
+                end
+            end
+        endcase
+    end else if (stage == FINALIZE) begin
+        case (step)
+            2'b00: begin
+                // a0 += areg
+                a0 <= adds;
+                step <= 2'b01;
+            end
+            2'b01: begin
+                // b0 += breg
+                b0 <= adds;
+                step <= 2'b10;
+            end
+            2'b10: begin
+                // c0 += creg
+                c0 <= adds;
+                step <= 2'b11;
+            end
+            2'b11: begin
+                // d0 += dreg
+                d0 <= adds;
+                stage <= FINISHED;
+            end
+        endcase
+    end
+end
+
+endmodule
+{% endhighlight %}
+
+This `chunk_cruncher` module performs the computation in the inner loop of
+the MD5 algorithm. It has address and data ports for the ROMs and RAMs,
+as well as reset and start signals. The reset signal will tell the unit to
+begin a new MD5 calculation, and the start signal will tell the unit to process
+a new 512-bit chunk.
+
+The first `always` block is combinational and simply multiplexes the inputs
+of the 32-bit adder based on the current step and stage. The second `always`
+block is our state machine.
+
+Note that, oddly enough, we do `i = i + 1` in step 2 instead of step 3.
+This is because there are registers on the address inputs of our ROMs.
+We change the value of `i` in step 2. In step 3, the value of `s` will be based
+on the old value of `i`. Then, when we wrap around back to step 0, the value
+of `k` will be based on the new value of `i`.
+
+## Putting Memory and Computation Together
+
+Now that we have our memory and computational blocks, we'll have to put them
+together in order to make them do something useful. Since our ROMs are dual
+ported, we'll put together two "chunk\_cruncher" modules, an sdata ROM, a kdata
+ROM, and two mdata RAMs.
+
+{% highlight verilog %}
+module md5unit (
+    input clk,
+    input [1:0] reset,
+    input [1:0] start,
+
+    input write,
+    input [31:0] writedata,
+    input [4:0]  writeaddr,
+
+    output [127:0] digest0,
+    output [127:0] digest1,
+
+    output [1:0] done
+);
+
+wire [1:0] m_write;
+assign m_write[0] = write && !writeaddr[4];
+assign m_write[1] = write && writeaddr[4];
+
+wire [5:0] cc_iaddr [1:0];
+wire [3:0] cc_gaddr [1:0];
+
+wire [127:0] cc_digest [1:0];
+assign digest0 = cc_digest[0];
+assign digest1 = cc_digest[1];
+
+wire [31:0] cc_mdata [1:0];
+wire [4:0]  cc_sdata [1:0];
+wire [31:0] cc_kdata [1:0];
+
+genvar i;
+generate
+    for (i = 0; i < 2; i = i + 1) begin : mccgen
+        chunk_cruncher cc (
+            .clk (clk),
+            .reset (reset[i]),
+            .start (start[i]),
+            .done (done[i]),
+            .digest (cc_digest[i]),
+            .iaddr (cc_iaddr[i]),
+            .kdata (cc_kdata[i]),
+            .sdata (cc_sdata[i]),
+            .gaddr (cc_gaddr[i]),
+            .mdata (cc_mdata[i])
+        );
+
+        mdataram mram (
+            .clock (clk),
+            .data (writedata),
+            .wraddress (writeaddr[3:0]),
+            .wren (m_write[i]),
+            .rdaddress (cc_gaddr[i]),
+            .q (cc_mdata[i])
+        );
+    end
+endgenerate
+
+sdatarom srom (
+    .clock (clk),
+    .address_a (cc_iaddr[0]),
+    .address_b (cc_iaddr[1]),
+    .q_a (cc_sdata[0]),
+    .q_b (cc_sdata[1])
+);
+
+kdatarom krom (
+    .clock (clk),
+    .address_a (cc_iaddr[0]),
+    .address_b (cc_iaddr[1]),
+    .q_a (cc_kdata[0]),
+    .q_b (cc_kdata[1])
+);
+
+endmodule
+{% endhighlight %}
+
+## Conclusion
+
+So now we've built are MD5 unit. But how do we make sure it works? In my next
+post, I'll discuss verification using the ModelSim circuit simulator.
