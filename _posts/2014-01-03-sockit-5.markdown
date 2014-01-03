@@ -647,3 +647,5 @@ endmodule
 
 So now we've built are MD5 unit. But how do we make sure it works? In my next
 post, I'll discuss verification using the ModelSim circuit simulator.
+
+[<- Part 4]({% post_url 2013-12-29-sockit-4 %})
