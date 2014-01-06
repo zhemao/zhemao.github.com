@@ -358,7 +358,8 @@ The `external_signal` name of the wire in the outer module.
 Now that we've finished our circuit, we can compile our hardware description
 and program it onto the FPGA. First, though, let's do a quick static check
 to make sure we didn't screw up somewhere. Run "Analysis and Synthesis" by
-clicking on the icon with a purple triangle and blue check mark in the tool bar.
+clicking on the icon with a purple triangle and blue check mark in the tool bar
+(third from left in below image).
 Wait for the action to complete. You can watch its progress in the "Tasks"
 window at the middle left. After it's finished, inspect the log output in the
 "Messages" window at the bottom. Make sure it doesn't have any errors or
@@ -367,9 +368,11 @@ If you do see warnings or errors, look back at your hardware descriptions and
 make sure there isn't a typo. "Analysis and Synthesis" will be useful later on
 for catching syntax mistakes.
 
+![Quartus Toolbar](http://i.imgur.com/mdatABF.png)
+
 Now that you've checked the descriptions, you can run a full compilation by
-clicking the icon with the purple triangle (directly to the left of the
-"Analysis and Synthesis" button). Be prepared to wait a little while.
+clicking the icon with the purple triangle (second from left in the image).
+Be prepared to wait a little while.
 Once the compilation is complete, a file called "sockit\_test.sof" should be
 generated in the "output\_files" subdirectory of your project folder.
 This file contains the configuration you will program into the FPGA.
@@ -381,7 +384,8 @@ article for Windows). Make sure you have the SoCKit connected to your computer
 correctly. The USB Blaster port is the microUSB port farthest to the right,
 if the ports are facing toward you. Once you are sure the drivers are working,
 open up the programmer by double-clicking on "Program Device" in the "Tasks"
-window or by clicking on "Tools" -> "Programmer" in the menu. In the new window,
+window, by clicking on "Tools" -> "Programmer" in the menu, or the Programmer
+button in the toolbar (second from right in the above image). In the new window,
 go to "Hardware Setup" and make sure "Currently selected hardware" is set to
 something like "CV SoCKit". If you cannot find this selection in the dropdown
 menu, you may want to check that the board is on, the USB blaster is connected,

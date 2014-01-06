@@ -110,8 +110,10 @@ has one thing that can be written, it does not need an address input.
 
 Now that you have an Avalon peripheral, we can hook it up to the processor.
 For this, we will need to use Altera's Qsys tool. You can open Qsys from Quartus
-by going to "Tools" -> "Qsys". You can also click the Qsys icon, third from the
-right on the Quartus toolbar.
+by going to "Tools" -> "Qsys". You can also click the Qsys icon, which is the
+farthest on the right in our trusty Quartus toolbar screenshot.
+
+![Quartus Toolbar](http://i.imgur.com/mdatABF.png)
 
 When you first start Qsys, the only component in place will be the clock
 and reset controller. We will need to add our processor to this system.
