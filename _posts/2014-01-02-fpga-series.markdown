@@ -16,7 +16,7 @@ interfacing the FPGA with Linux kernel modules and userspace programs running
 on the ARM processor using Altera's Qsys system integration tool.
 
 <ul class="front-page-list">
-{% for post in site.categories.fpga %}
+{% for post in site.categories.fpga reversed %}
 <li><a href="{{post.url}}">{{post.title}}</a></li>
 {% endfor %}
 </ul>
