@@ -364,3 +364,5 @@ So now you know that the md5unit is working correctly. In the next post,
 we will create a Qsys system containing several copies of the MD5 unit,
 write software for the HPS to control the FPGA units, and take some
 measurements on how fast our system can compute checksums.
+
+[<- Part 5]({% post_url 2014-01-03-sockit-5 %})
