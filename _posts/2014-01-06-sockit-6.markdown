@@ -78,7 +78,7 @@ a new test bench. Make sure to set "Test Bench Name" and "Top Level Module"
 to the name of the module (in this case, `example_tb`) and to set the
 simulation period to a reasonable amount of time (180 ns would be sufficient
 for this example). You can then choose the newly created testbench in the
-dropdown menu. 
+dropdown menu.
 
 Before we run ModelSim, we will need to tell Quartus where to find the
 ModelSim binaries. The binaries can be found at "modelsim\_ase/bin" from the
@@ -106,3 +106,261 @@ keyboard. It should look something like the following.
 
 You should also see no assertion failures or errors in the command window at
 the bottom.
+
+## Verifying the MD5 Unit
+
+To verify our MD5 unit, we will use a similar technique as above.
+We put in some input, run the computation, and then check that the output is
+correct. With more complicated computations like MD5, we can generate the
+input and output programmatically.
+
+To get our input, we will just create a random sequence of bytes. On Linux,
+we can do this using
+
+    head -c 42 /dev/urandom > testsequence.bin
+
+We can find the md5sum of this using
+
+    md5sum testsequence.bin
+
+However, we can't just copy and paste the bytes of testsequence.bin into our
+testbench because it hasn't been appropriately padded. We can write a C
+program to accomplish this.
+
+{% highlight c %}
+void padbuffer(uint8_t *bytes, int len)
+{
+	uint32_t *words = (uint32_t *) bytes;
+
+	if (len + 5 >= BUFSIZE)
+		abort();
+
+	bytes[len] = 0x80;
+
+	reverse_if_needed(bytes, len + 1);
+
+	memset(bytes + len + 1, 0, BUFSIZE - len - 3);
+
+        // equivalent to len * 8 truncated to 32 bits
+	words[NUMWORDS - 2] = len << 3;
+        // equivalent to taking bits 63:32 of len * 8
+	words[NUMWORDS - 1] = len >> 29;
+}
+{% endhighlight %}
+
+The `reverse_if_needed` function checks to see if the processor architecture
+on which the program is being run is big endian and, if so, reverses the
+order of the bytes in each word. This is necessary since we will be putting
+in the input a word at a time.
+
+You can see the full padding program on [Github](https://github.com/zhemao/md5cracker/tree/master/software).
+The code is split across the md5.c and padandprint.c files.
+
+Now that we have our input, we can write our testbench.
+
+{% highlight verilog %}
+module md5unit_tb ();
+
+reg [31:0] testsequence [0:15];
+parameter expected = 128'hbaebddf861d3eb2714ba892c2ad26682;
+
+reg [3:0] writeaddr;
+wire [31:0] writedata = testsequence[writeaddr];
+reg write;
+reg clk = 1'b1;
+reg reset;
+reg start;
+wire [127:0] digest0;
+wire [127:0] digest1;
+wire done1;
+wire done0;
+
+md5unit md5 (
+    .clk (clk),
+    .reset ({1'b0, reset}),
+    .start ({1'b0, start}),
+    .write (write),
+    .writedata (writedata),
+    .writeaddr ({1'b0, writeaddr}),
+    .digest0 (digest0),
+    .digest1 (digest1),
+    .done ({done1, done0})
+);
+
+always begin
+    #10000 clk = !clk;
+end
+
+integer i;
+initial begin
+    testsequence[0] = 32'h01680208;
+    testsequence[1] = 32'h13ab80bb;
+    testsequence[2] = 32'hcb8b2c30;
+    testsequence[3] = 32'hb9657582;
+    testsequence[4] = 32'ha3793c48;
+    testsequence[5] = 32'h103f26be;
+    testsequence[6] = 32'h0b78dac4;
+    testsequence[7] = 32'h5c433348;
+    testsequence[8] = 32'h4de99287;
+    testsequence[9] = 32'heff0be7c;
+    testsequence[10] = 32'h00808533;
+    testsequence[11] = 32'h00000000;
+    testsequence[12] = 32'h00000000;
+    testsequence[13] = 32'h00000000;
+    testsequence[14] = 32'h00000150;
+    testsequence[15] = 32'h00000000;
+
+    reset = 1'b1;
+    write = 1'b0;
+    start = 1'b0;
+    writeaddr = 4'h0;
+    #20000 reset = 1'b0;
+    write = 1'b1;
+
+    for (i = 1; i < 16; i = i + 1) begin
+        #20000 writeaddr = i[3:0];
+    end
+
+    #20000 write = 1'b0;
+    start = 1'b1;
+    #20000 start = 1'b0;
+
+    #5200000 assert(done0 == 1'b1);
+    assert(digest0 == expected);
+end
+
+endmodule
+{% endhighlight %}
+
+The testbench resets the md5unit, writes the input to the memory, starts the
+computation, and checks the digest at the end.
+
+## Debugging in Simulation
+
+The testbench should run without any assertion errors, but this is because
+I spent quite some time debugging and fixing small mistakes. In general, you
+will get assertion errors the first time you run your testbench. This is okay,
+since finding errors is the whole point of simulation. Here are a few
+strategies for using ModelSim to debug your hardware.
+
+### Exposing Internal Signals
+
+By default, ModelSim will only show you the signals declared in the top-level
+testbench module. This is not very helpful in debugging, since the problem
+will most likely be in a signal internal to the unit you are testing.
+Fortunately, ModelSim provides a way of showing internal signals in the
+simulation window through the use of TCL scripts.
+
+The TCL script used in my design to set up the simulation looks like this.
+
+{% highlight tcl %}
+add wave clk
+add wave reset
+add wave start
+add wave -radix hexadecimal digest0
+add wave done0
+add wave {md5/cc_sdata[0]}
+add wave -radix hexadecimal {md5/cc_kdata[0]}
+add wave {md5/cc_iaddr[0]}
+add wave {md5/cc_gaddr[0]}
+
+add wave -radix hexadecimal {md5/mccgen[0]/cc/areg}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/breg}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/creg}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/dreg}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/adds}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/rotated}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/adda}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/addb}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/t0}
+add wave -radix hexadecimal {md5/mccgen[0]/cc/t1}
+
+add wave {md5/mccgen[0]/cc/step}
+add wave {md5/mccgen[0]/cc/stage}
+add wave -radix unsigned {md5/mccgen[0]/cc/ireg}
+
+run 5600 ns
+{% endhighlight %}
+
+You can tell ModelSim to use the script to set up the simulation by going
+to the Simulation settings in Quartus and filling in the "Use script to set
+up simulation" option.
+
+As you can see `add wave signal` is the basic way of adding a signal to the
+viewer. You can add refer to internal signals using slashes.
+You can also refer to signals inside generate statements using square brackets.
+In this case, the signal name must be wrapped in curly braces to prevent the
+square brackets from being interpreted as indexing into a TCL array.
+You can also use the `-radix` option to change the radix displayed for a
+multi-bit signal in the simulation window. The default is binary, but you can
+also choose `unsigned`, `decimal`, or `hexadecimal`.
+
+To debug, you will have to trace the data flow backwards or forwards until you
+find the point at which the signal value diverges from its expected value.
+Sometimes, it is difficult to know what the intermediate values should be.
+In this case, it is helpful to write a software simulation of the computation
+and print out what the expected values of registers are.
+For instance, in our case, it would be helpful to know the values of A, B, C,
+and D after each cycle of the computation. Therefore, we write a C function
+that computes the new register values for each cycle.
+
+{% highlight c %}
+void compute_onec(uint32_t *registers, uint8_t i,
+		  const uint32_t *k, uint32_t *m, const uint8_t *s)
+{
+	uint32_t a = registers[0];
+	uint32_t b = registers[1];
+	uint32_t c = registers[2];
+	uint32_t d = registers[3];
+	uint32_t f, sum;
+	uint8_t g;
+
+	if (i < 0 || i > 63)
+		abort();
+
+	if (i < 16) {
+		f = (b & c) | (~b & d);
+		g = i & 0x0f;
+	} else if (i < 32) {
+		f = (d & b) | (~d & c);
+		g = (5 * i + 1) & 0x0f;
+	} else if (i < 48) {
+		f = b ^ c ^ d;
+		g = (3 * i + 5) & 0x0f;
+	} else {
+		f = c ^ (b | ~d);
+		g = (7 * i) & 0x0f;
+	}
+
+	sum = a + f + k[i] + m[g];
+
+	registers[0] = d;
+	registers[1] = b + left_rotate(sum, s[i]);
+	registers[2] = b;
+	registers[3] = c;
+}
+{% endhighlight %}
+
+Then we print them out as we go along.
+
+{% highlight c %}
+for (i = 0; i < 64; i++) {
+        compute_onec(registers, i, k, words, s);
+        for (j = 0; j < 4; j++) {
+                printf("%c = %x, ", 'a' + j, registers[j]);
+        }
+}
+{% endhighlight %}
+
+You can find the full code in the same folder as "padandprint.c". It's called
+"reference.c".
+
+By checking the output of the reference program against the signals exposed
+in your ModelSim view, you can track down the bug in your Verilog description.
+
+## Conclusion
+
+So now you know that the md5unit is working correctly. In the next post,
+we will create a Qsys system containing several copies of the MD5 unit,
+write software for the HPS to control the FPGA units, and take some
+measurements on how fast our system can compute checksums.
