@@ -1,0 +1,108 @@
+---
+title: Exploring the Arrow SoCKit Part VI - Simulation in ModelSim
+layout: default
+categories: [blog, fpga]
+---
+
+In the last post, we created a unit that computes MD5 checksums. Before we
+program it onto the FPGA, we wanted to simulate it and verify that it is
+operating correctly. To do this, we use the ModelSim circuit simulator.
+
+To run ModelSim simulations, we create testbenches, which are programs written
+in an HDL that describe events that occur at different times. Here is an
+example of a testbench written in SystemVerilog.
+
+{% highlight verilog %}
+module example (
+    input clk,
+    input a,
+    input b,
+    output reg o
+);
+
+always @(posedge clk) begin
+    o <= a & b;
+end
+
+endmodule
+
+module example_tb ();
+
+reg  clk = 1'b1;
+reg  a;
+reg  b;
+wire o;
+
+example ex (
+    .clk (clk),
+    .a (a),
+    .b (b),
+    .o (o)
+);
+
+always begin
+    #10000 clk = !clk;
+end
+
+initial begin
+    a <= 1'b0;
+    b <= 1'b0;
+    #40000 assert(o == 1'b0);
+    a <= 1'b0;
+    b <= 1'b1;
+    #40000 assert(o == 1'b0);
+    a <= 1'b1;
+    b <= 1'b0;
+    #40000 assert(o == 1'b0);
+    a <= 1'b1;
+    b <= 1'b1;
+    #40000 assert(o == 1'b1);
+end
+
+endmodule
+{% endhighlight %}
+
+SystemVerilog is a language based on Verilog with several extensions. We use
+it in the testbench mainly because of the `assert` statement.
+
+This testbench tests a clock-synchronized AND gate.
+In the `always` block, we toggle the value of the clock every 10 ns
+(to simulate a 50 MHz clock frequency). The `#delay` syntax causes a statement
+to occur a given number of picoseconds later in the simulation.
+In the `initial` block, we set the values of a and b, wait two cycles,
+and then assert that the output value is correct.
+
+You can add a testbench to your design by going to "Assignments" -> "Settings" ->
+"EDA Tool Settings" -> "Simulation". Click on "Test Benches" -> "New" to add
+a new test bench. Make sure to set "Test Bench Name" and "Top Level Module"
+to the name of the module (in this case, `example_tb`) and to set the
+simulation period to a reasonable amount of time (180 ns would be sufficient
+for this example). You can then choose the newly created testbench in the
+dropdown menu. 
+
+Before we run ModelSim, we will need to tell Quartus where to find the
+ModelSim binaries. The binaries can be found at "modelsim\_ase/bin" from the
+root of your Altera installation. So, for instance, if you told the Altera
+installer to put everything in "/opt/altera/13.1", the modelsim binaries
+will be in "/opt/altera/13.1/modelsim\_ase/bin". You can set the directory in
+"Tools" -> "Options" -> "EDA Tool Options" -> "ModelSim-Altera".
+Once the directory is set, you can run the simulation by clicking the
+"RTL simulation" button, which is the fifth from the right in our Quartus
+toolbar screenshot.
+
+![Quartus Toolbar](http://i.imgur.com/mdatABF.png)
+
+The simulation should open up a new window. If this does not happen, there
+may be something wrong with your ModelSim installation.
+You can check the [Arch Wiki](https://wiki.archlinux.org/index.php/Altera_Design_Software#ModelSim)
+to make sure you have all the dependencies installed.
+
+Once the simulation finishes running, the testbench signals should appear in
+the main window. You can see the full simulation run by clicking on the
+filled-in magnifying glass with tool tip "Zoom Full" or by pressing Z on the
+keyboard. It should look something like the following.
+
+![Example Testbench Run](http://i.imgur.com/lXkMIgf.png)
+
+You should also see no assertion failures or errors in the command window at
+the bottom.
