@@ -5,7 +5,7 @@ categories: [blog, fpga]
 ---
 
 In the last post, we created a unit that computes MD5 checksums. Before we
-program it onto the FPGA, we wanted to simulate it and verify that it is
+program it onto the FPGA, we want to simulate it and verify that it is
 operating correctly. To do this, we use the ModelSim circuit simulator.
 
 To run ModelSim simulations, we create testbenches, which are programs written
@@ -125,7 +125,7 @@ We can find the md5sum of this using
 
 However, we can't just copy and paste the bytes of testsequence.bin into our
 testbench because it hasn't been appropriately padded. We can write a C
-program to accomplish this.
+program to pad the input.
 
 {% highlight c %}
 void padbuffer(uint8_t *bytes, int len)
@@ -149,9 +149,9 @@ void padbuffer(uint8_t *bytes, int len)
 {% endhighlight %}
 
 The `reverse_if_needed` function checks to see if the processor architecture
-on which the program is being run is big endian and, if so, reverses the
-order of the bytes in each word. This is necessary since we will be putting
-in the input a word at a time.
+on which the program is being run is big-endian and, if so, reverses the
+order of the bytes in each 32-bit word. This is necessary since we will be
+putting the input in a word at a time.
 
 You can see the full padding program on [Github](https://github.com/zhemao/md5cracker/tree/master/software).
 The code is split across the md5.c and padandprint.c files.
@@ -286,7 +286,7 @@ You can tell ModelSim to use the script to set up the simulation by going
 to the Simulation settings in Quartus and filling in the "Use script to set
 up simulation" option.
 
-As you can see `add wave signal` is the basic way of adding a signal to the
+As you can see, `add wave` is the basic way of adding a signal to the
 viewer. You can add refer to internal signals using slashes.
 You can also refer to signals inside generate statements using square brackets.
 In this case, the signal name must be wrapped in curly braces to prevent the
@@ -294,6 +294,8 @@ square brackets from being interpreted as indexing into a TCL array.
 You can also use the `-radix` option to change the radix displayed for a
 multi-bit signal in the simulation window. The default is binary, but you can
 also choose `unsigned`, `decimal`, or `hexadecimal`.
+
+### Checking Intermediate Results
 
 To debug, you will have to trace the data flow backwards or forwards until you
 find the point at which the signal value diverges from its expected value.
