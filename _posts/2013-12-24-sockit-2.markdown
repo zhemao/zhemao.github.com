@@ -144,8 +144,12 @@ You also need to build the device tree for the SoCKit board.
 Now that the kernel and device tree are built, you need to copy them onto the
 boot partition. First, format the partition as FAT32 and mount it.
 
-    sudo mkfs.fat /dev/sdX1
+    sudo mkfs.vfat /dev/sdX1
     sudo mount /dev/sdX1 /mnt
+
+If you don't have the `mkfs.vfat` program on your computer, you can probably
+get it by installing the "dosfstools" package from your distribution's
+package repository.
 
 Then copy kernel and device tree onto the filesystem and unmount it.
 
