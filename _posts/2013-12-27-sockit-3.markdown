@@ -308,10 +308,10 @@ Run the following command from your project directory.
     quartus_cpf -c output_files/sockit_test.sof output_files/sockit_test.rbf
 
 Then copy the "sockit\_test.rbf" file to the "/root" folder of the Linux
-partition on your SD card. Then, boot the HPS and login through the serial.
-You can then run the following command to program the FPGA.
+partition on your SD card. You can then run the following command from the
+HPS to program the FPGA.
 
-    dd if=sockit_test.rpf of=/dev/fpga0
+    dd if=sockit_test.rbf of=/dev/fpga0
 
 You should see the FPGA LEDs begin to blink at this point.
 Be careful that you do not program the FPGA in this way when the FPGA-to-HPS
