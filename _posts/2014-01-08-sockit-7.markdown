@@ -1,0 +1,451 @@
+---
+title: Exploring the Arrow SoCKit Part VII - Software Control for the FPGA MD5 Cracker
+layout: default
+categories: [blog, fpga]
+---
+
+So now, finally, it's time to connect our MD5 units to the HPS so that we can
+get them to do something useful.
+
+## Grouping Several MD5 Units
+
+First, we'll want to instantiate multiple MD5 units and multiplex their
+inputs and outputs. We'll instantiate 16 md5 units here for a total of 32
+compute nodes. The choice of number of nodes is pretty arbitrary. In our case
+it's convenient since the lightweight HPS-to-FPGA bridge is 32-bit, so we can
+use a single word each for the start, reset, and done signals.
+Using a for-generate statement saves us a lot of typing here.
+
+{% highlight verilog %}
+module md5group (
+    input clk,
+    input [31:0] start,
+    input [31:0] reset,
+
+    input write,
+    input [31:0] writedata,
+    input [8:0]  writeaddr,
+
+    output reg [31:0] readdata,
+    input      [6:0]  readaddr,
+
+    output [31:0] done
+);
+
+wire [15:0] unit_write;
+wire [127:0] digest_arr [0:31];
+wire [4:0] digest_sel = readaddr[6:2];
+wire [1:0] word_sel = readaddr[1:0];
+wire [127:0] digest = digest_arr[digest_sel];
+
+always @(*) begin
+    case (word_sel)
+        2'b00: readdata = digest[31:0];
+        2'b01: readdata = digest[63:32];
+        2'b10: readdata = digest[95:64];
+        2'b11: readdata = digest[127:96];
+    endcase
+end
+
+genvar i;
+generate
+    for (i = 0; i < 16; i = i + 1) begin : MD5GEN
+        assign unit_write[i] = (write && i == writeaddr[8:5]);
+        md5unit md5 (
+            .clk (clk),
+            .reset (reset[2 * i + 1 : 2 * i]),
+            .start (start[2 * i + 1 : 2 * i]),
+            .write (unit_write[i]),
+            .writedata (writedata),
+            .writeaddr (writeaddr[4:0]),
+            .digest0 (digest_arr[2 * i]),
+            .digest1 (digest_arr[2 * i + 1]),
+            .done (done[2 * i + 1 : 2 * i])
+        );
+    end
+endgenerate
+
+endmodule
+{% endhighlight %}
+
+## Avalon Interfaces
+
+Now we'll need some Avalon slave interfaces. First, we'll make one interface
+for the control and status signals: reset, start, and done.
+
+{% highlight verilog %}
+module md5control (
+    input clk,
+    input reset,
+
+    input      [31:0] avs_writedata,
+    output reg [31:0] avs_readdata,
+    input      [1:0]  avs_address,
+    input             avs_read,
+    input             avs_write,
+
+    output [31:0] md5_start,
+    output [31:0] md5_reset,
+    input  [31:0] md5_done
+);
+
+reg [31:0] start_reg;
+reg [31:0] reset_reg;
+
+assign md5_start = start_reg;
+assign md5_reset = reset_reg;
+
+always @(posedge clk) begin
+    if (avs_write) begin
+        case (avs_address)
+            2'b00: begin
+                reset_reg <= avs_writedata;
+                start_reg <= 32'd0;
+            end
+            2'b01: begin
+                reset_reg <= 32'd0;
+                start_reg <= avs_writedata;
+            end
+            default: begin
+                reset_reg <= 32'd0;
+                start_reg <= 32'd0;
+            end
+        endcase
+    end else if (avs_read) begin
+        reset_reg <= 32'd0;
+        start_reg <= 32'd0;
+        case (avs_address)
+            2'b00: avs_readdata <= reset_reg;
+            2'b01: avs_readdata <= start_reg;
+            2'b10: avs_readdata <= md5_done;
+            default: avs_readdata <= 32'd0;
+        endcase
+    end else begin
+        reset_reg <= 32'd0;
+        start_reg <= 32'd0;
+    end
+end
+
+endmodule
+{% endhighlight %}
+
+Notice that, unless we are writing to start or reset, we set the signals
+back to 0 after every cycle. This ensures that the signals are only high for
+a single cycle as expected.
+
+We also need Avalon slaves for the input and output signals in md5group.
+These slaves aren't very interesting, since they pretty much just pass the
+signals through, so I won't show them here. You can look at them on
+[Github](https://github.com/zhemao/md5cracker/tree/master/rtl/avalon) if
+you're really interested.
+
+## Qsys
+
+If you're using the code on [Github](https://github.com/zhemao/md5cracker),
+you can load the `soc_system.qsys` file once you open up Qsys and click
+generate. I basically just created the peripherals with the `avs_*` signals
+connected to the Avalon interface and `md5_*` signal exported to conduits.
+You can click generate in Qsys and a .qip file will be generated at
+"soc\_system/synthesis/soc\_system.qip" as before.
+
+At this point, I ran into a really weird bug with Qsys. No matter what I did,
+it refused to export the `md5_write` signal from the `md5input` peripheral.
+I ended up having to edit it manually to make it work. Since this is kind of
+tedious to do every time, I wrote a script that will fix the generated
+"soc\_system.v" file automatically. If you're using the code from Github,
+just run the "fix\_generated\_system.sh" script.
+
+At this point, you can run Analysis and Synthesis, followed by the memory pin
+placement TCL script that was generated by Qsys. After that's done, you can
+compile the programming file for the FPGA. You don't have to run the full
+compilation to get the .sof file, you only have to run up to the
+"Assembler" stage. You can do this by just double clicking on "Assembler"
+in the "Tasks" window at the center left. Be prepared to wait a while.
+Quartus's fitter can take a really long time for larger designs.
+Once the assembler stage has finished, you can convert the .sof file to a
+raw binary file if you so choose.
+
+## The Software
+
+The software we run on the board will have to generate a bunch of inputs,
+pad them appropriately, and then load everything into the FPGA registers.
+We'll just use the "mmap /dev/mem" technique again to access the bridge memory.
+We'll use a struct to keep track of all the pointers and files we'll need.
+
+{% highlight c %}
+struct fpga_control {
+	void *mem;
+	volatile uint32_t *md5input;
+	volatile uint32_t *md5output;
+	volatile uint32_t *md5control;
+	int fd;
+};
+{% endhighlight %}
+
+Then we can create functions for initializing and cleaning up the struct.
+
+{% highlight c %}
+#define MD5_INPUT_OFFSET 0x0
+#define MD5_OUTPUT_OFFSET 0x800
+#define MD5_CONTROL_OFFSET 0xa00
+
+#define PAGE_SIZE sysconf(_SC_PAGESIZE)
+#define LWHPS2FPGA_BASE 0xff200000
+
+int init_fpga_control(struct fpga_control *fpga)
+{
+	fpga->fd = open("/dev/mem", O_RDWR);
+	if (fpga->fd < 0)
+		return -1;
+
+	fpga->mem = mmap(NULL, PAGE_SIZE, PROT_READ | PROT_WRITE,
+			MAP_SHARED, fpga->fd, LWHPS2FPGA_BASE);
+	if (fpga->mem == MAP_FAILED) {
+		close(fpga->fd);
+		return -1;
+	}
+
+	fpga->md5input = fpga->mem + MD5_INPUT_OFFSET;
+	fpga->md5output = fpga->mem + MD5_OUTPUT_OFFSET;
+	fpga->md5control = fpga->mem + MD5_CONTROL_OFFSET;
+
+	return 0;
+}
+
+void release_fpga_control(struct fpga_control *fpga)
+{
+	munmap(fpga->mem, PAGE_SIZE);
+	close(fpga->fd);
+}
+{% endhighlight %}
+
+You might want to change the offset constants if your offsets are different.
+
+We'll want convenience functions for doing five key operations: resetting an
+MD5 unit, starting a unit, checking if a unit is done, copying the input in,
+and copying the output back. These definitions are pretty simple.
+
+{% highlight c %}
+void fpga_reset_unit(struct fpga_control *fpga, int unit)
+{
+	fpga->md5control[0] |= (1 << unit);
+	while ((fpga->md5control[0] >> unit) & 0x1);
+}
+
+void fpga_start_unit(struct fpga_control *fpga, int unit)
+{
+	fpga->md5control[1] |= (1 << unit);
+	while ((fpga->md5control[1] >> unit) & 0x1);
+}
+
+int fpga_unit_done(struct fpga_control *fpga, int unit)
+{
+	return (fpga->md5control[2] >> unit) & 0x1;
+}
+
+void fpga_copy_input(struct fpga_control *fpga, uint32_t *input, int unit)
+{
+	int i, start;
+
+	start = MD5_INPUT_SIZE * unit;
+
+	for (i = 0; i < MD5_INPUT_SIZE; i++)
+		fpga->md5input[start + i] = input[i];
+}
+void fpga_copy_output(struct fpga_control *fpga, uint32_t *output, int unit)
+{
+	int i, start;
+
+	start = MD5_OUTPUT_SIZE * unit;
+
+	for (i = 0; i < MD5_OUTPUT_SIZE; i++)
+		output[i] = fpga->md5output[start + i];
+}
+{% endhighlight %}
+
+Now we'll need code to generate the byte sequences we'll use as our inputs.
+For our purposes, let's generate all the alpha-numeric strings that can fit
+in a single 512-bit MD5 block.
+
+{% highlight c %}
+#define NUM_VALID_CHARS 62
+#define LARGEST_SEQUENCE 58
+
+struct seq_gen {
+	int length;
+	uint8_t valid_chars[NUM_VALID_CHARS];
+	uint8_t sequence[LARGEST_SEQUENCE];
+};
+
+void init_seq_gen(struct seq_gen *seq_gen)
+{
+	int i;
+
+	seq_gen->length = 0;
+
+	// 0-25 lowercase latin characters
+	// 26-51 uppercase latin characters
+	for (i = 0; i < 26; i++) {
+		seq_gen->valid_chars[i] = 'a' + i;
+		seq_gen->valid_chars[i + 26] = 'A' + i;
+	}
+
+	// 52-61 Arabic numerals
+	for (i = 0; i < 10; i++)
+		seq_gen->valid_chars[i + 52] = '0' + i;
+}
+
+static inline void copy_sequence(struct seq_gen *seq_gen, uint8_t *seq)
+{
+	int i;
+	for (i = 0; i < seq_gen->length; i++)
+		seq[i] = seq_gen->valid_chars[seq_gen->sequence[i]];
+}
+
+int next_sequence(struct seq_gen *seq_gen, uint8_t *seq)
+{
+	int i;
+	char last_char = NUM_VALID_CHARS - 1;
+	int updated = 0;
+
+	for (i = 0; i < seq_gen->length; i++) {
+		// sequence[i] is not the maximum int
+		// increment it and break out of this loop
+		if (seq_gen->sequence[i] != last_char) {
+			seq_gen->sequence[i]++;
+			updated = 1;
+			break;
+		}
+		// otherwise, wrap back around to 0
+		seq_gen->sequence[i] = 0;
+	}
+
+	// if everything was at the maximum valid int,
+	// we need to extend the length
+	if (!updated) {
+		// if we can generate no more strings, return 0
+		if (seq_gen->length == LARGEST_SEQUENCE)
+			return 0;
+		seq_gen->sequence[seq_gen->length] = 0;
+		seq_gen->length++;
+	}
+
+	// copy the characters to the pointer given
+	copy_sequence(seq_gen, seq);
+	return seq_gen->length;
+}
+
+{% endhighlight c %}
+
+The `next_sequence` function copies the next string in the sequence to the
+pointer given and returns the length of the string or 0 if all of the strings
+have been generated. Now that we have a way to generate inputs and control the
+FPGA, we can write the main loop of our program.
+
+{% highlight c %}
+#define REPORT_INTERVAL 5
+
+static inline void wait_for_done(struct fpga_control *fpga, int unit)
+{
+	while (!fpga_unit_done(fpga, unit));
+}
+
+int main(void)
+{
+	int unit = 0, len, status = 0;
+	struct fpga_control fpga[1];
+	struct seq_gen seq_gen[1];
+	uint8_t bytes[BUFSIZE];
+	uint32_t digest[4];
+	uint32_t *words = (uint32_t *) bytes;
+	int first_pass = 1, i;
+	unsigned long hashes = 0;
+	clock_t start, end, report_time;
+	float hash_time, avg_hashes;
+
+	printf("initializing fpga control\n");
+	if (init_fpga_control(fpga)) {
+		fprintf(stderr, "Could not initialize fpga controller\n");
+		exit(EXIT_FAILURE);
+	}
+
+	init_seq_gen(seq_gen);
+
+	start = clock();
+	report_time = start + REPORT_INTERVAL * CLOCKS_PER_SEC;
+
+	while ((len = next_sequence(seq_gen, bytes)) > 0) {
+		padbuffer(bytes, len);
+
+		wait_for_done(fpga, unit);
+		if (!first_pass) {
+			fpga_copy_output(fpga, digest, unit);
+			hashes++;
+		}
+
+		fpga_reset_unit(fpga, unit);
+		fpga_copy_input(fpga, words, unit);
+		fpga_start_unit(fpga, unit);
+
+		unit++;
+
+		if (unit == NUM_MD5_UNITS) {
+			unit = 0;
+			first_pass = 0;
+		}
+
+		end = clock();
+		if (end > report_time) {
+			hash_time = (end - start) / (float) CLOCKS_PER_SEC;
+			avg_hashes = hashes / hash_time;
+			printf("Hashing at %f per sec\n", avg_hashes);
+			report_time += REPORT_INTERVAL * CLOCKS_PER_SEC;
+		}
+	}
+
+	for (i = 0; i < NUM_MD5_UNITS; i++) {
+		wait_for_done(fpga, (unit + i) % NUM_MD5_UNITS);
+		fpga_copy_output(fpga, digest, (unit + i) % NUM_MD5_UNITS);
+		hashes++;
+	}
+
+	end = clock();
+
+	hash_time = (end - start) / (float) CLOCKS_PER_SEC;
+	avg_hashes = hashes / hash_time;
+
+	printf("Time elapsed: %f s\n", hash_time);
+	printf("Hashes computed: %lu\n", hashes);
+	printf("Average hash rate: %f per sec\n", avg_hashes);
+
+	release_fpga_control(fpga);
+	return status;
+}
+{% endhighlight %}
+
+Basically, the main loop will go through the 32 units in a round. At each
+iteration, it waits for the unit to finish, copies data back from it if
+necessary, resets the unit, copies the next sequence to it, and then starts
+the unit again. This way, we can keep all 32 units busy.
+
+## Results
+
+Using this 32-unit MD5 cracker, we can compute hashes on the SoCKit at about
+80 thousand hashes per second. This is actually not that great. A single 2.7
+GHz Intel Xeon core on my Macbook air can run at 10s of millions of hashes
+per second. A high end GPU running OCL hashcat can run the algorithm at 23
+billion hashes per second. There are probably ways to speed up our computation,
+perhaps by instantiating more MD5 units or moving our sequence generation to
+the FPGA, but it's unlikely that the raw performance would catch up to that
+of the Xeon.
+
+## Conclusion
+
+So now you have seen how to implement moderately complex algorithms on the FPGA.
+You have also seen that mid-range FPGAs like the Cyclone V aren't actually
+that great when it comes to raw performance. Where FPGAs really shine is in
+strictly timed IO and real-time processing. We'll explore the use of FPGAs in
+these sorts of applications in the next few posts, as we look at implementing
+real-time digital audio effects on the FPGA.
+
+[<- Part 6]({% post_url 2014-01-06-sockit-6 %})

@@ -368,3 +368,4 @@ write software for the HPS to control the FPGA units, and take some
 measurements on how fast our system can compute checksums.
 
 [<- Part 5]({% post_url 2014-01-03-sockit-5 %})
+[Part 7 ->]({% post_url 2014-01-08-sockit-7 %})
