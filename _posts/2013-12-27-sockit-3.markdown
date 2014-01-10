@@ -301,13 +301,20 @@ Once the script has run, you can run the full compilation.
 
 Since we will be using the HPS a lot, it's useful to know how to program the
 FPGA from the HPS. This way, you won't have to keep switching the USB cable
-between the UART to the USB Blaster. First, we need to convert our .sof file
-into a raw binary file. To do this, you can use the `quartus_cpf` tool.
-Run the following command from your project directory.
+between the UART to the USB Blaster.
+
+Programming from the HPS requires a slightly different board configuration.
+The MSEL switches should be set to 00000, so make sure all the switches are in
+the '0' position. This configuration should still allow you to program from
+the USB Blaster.
+
+Programming the FPGA from the HPS requires a raw binary file (.rbf) instead
+of a .sof file. You can convert the .sof file to a .rbf file using the
+`quartus_cpf` tool. Run the following command from your project directory.
 
     quartus_cpf -c output_files/sockit_test.sof output_files/sockit_test.rbf
 
-Then copy the "sockit\_test.rbf" file to the "/root" folder of the Linux
+Copy the "sockit\_test.rbf" file to the "/root" folder of the Linux
 partition on your SD card. You can then run the following command from the
 HPS to program the FPGA.
 
