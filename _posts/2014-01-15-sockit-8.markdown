@@ -1,0 +1,469 @@
+---
+title: Exploring the Arrow SoCKit Part VIII - The Audio Codec
+layout: default
+categories: [blog, fpga]
+---
+
+In the next few posts, we will look at implementing real-time audio processing
+on the FPGA. The first step, of course, is to build an interface to the
+Audio Codec so that we can record and play audio. Interfacing with hardware
+peripherals from an FPGA can be a rather challenging task, so I thought it
+deserves its own article. In this post, we will walk through the steps it
+takes to get audio capture and playback working on the FPGA. If you wish to
+follow along, you will need speakers or headsets and a microphone.
+
+## An Introduction to Digital Audio
+
+Before we get into the details of the SoCKit board's audio codec, it's worth
+it to discuss some of the more general aspects of digital audio and what
+exactly an audio codec does. If you already have experience working with
+digital audio, feel free to skip this section.
+
+What our ears perceive as sound are pressure waves which propagate through
+some medium (like air or water), creating alternating areas of compression
+and rarefaction. Microphones convert these pressure waves into an electrical
+signal, and speakers do the inverse. The pressure at a point in the wave is
+represented electrically as a voltage level. The electrical signals here are
+analog signals, which is to say that they are continuous in time and voltage.
+However, the FPGA is a digital device, which can only deal with discrete
+(binary) quantities and runs at a fixed clock. Therefore, we need an audio
+codec in order to convert between the analog signals coming from the microphone
+or going to the speakers and the digital signals that the FPGA understands.
+
+First, let's look at how audio input from the microphones gets handled.
+The signal that comes into the audio codec from the microphones is analog
+and looks something like this.
+
+<img src="http://i.imgur.com/AlMoXWM.png" alt="Analog" width="950"/>
+
+The x-axis is time, the y-axis is voltage (I know, [I'm terrible](https://xkcd.com/833/)).
+I've chosen 16 as the amplitude here purely arbitrarily. The actual voltages
+depend on the microphone and audio codec. The signal here is continuous in
+time and voltage. To break up the time axis into the discrete chunks, the
+audio codec performs sampling, which captures the voltage level at regular
+intervals.
+
+<img src="http://i.imgur.com/AGn0ZqL.png" alt="Sampled" width="950"/>
+
+The frequency at which samples are captured is called the sampling rate.
+
+Now the time axis has been discretized, but the voltage levels are still
+continuous. To convert the voltage levels into discrete quantities
+(i.e. integers), the audio codec performs analog-to-digital conversion (ADC).
+
+<img src="http://i.imgur.com/HXrRZc3.png" alt="Digital" width="950"/>
+
+To output audio on the speakers, the audio codec does the reverse operation,
+converting integer samples back to analog voltage values. This is known
+as digital-to-analog conversion (DAC).
+
+<img src="http://i.imgur.com/Pv0B98V.png" alt="DAC" width="950"/>
+
+As you can see, we've lost a bit of information from sampling and ADC, so our
+reproduced signal looks kind of jagged. But after some analog filtering,
+the signal will be smoothed out into a relatively faithful reproduction of the
+original analog signal, albeit with a little quantization noise (the difference
+between the discrete voltage and the original analog voltage). In general,
+the integer range will be a lot larger than -15 to 15. I've just chosen an
+extreme case for illustration. With a larger integer range, the quantization
+noise will be reduced. The sampling rate does not affect quantization noise,
+but it does determine the range of (audio) frequencies that can be represented.
+A sampling rate of `r` Hz can capture signals up to `r/2` Hz. A simple
+explanation of why this is is that a sinusoid crosses the origin twice in a
+single period. In order to reproduce the true frequency of the sinusoid,
+there must be at least one sample taken between each zero-crossing.
+The standard audio quality for music is CD quality, which has 16-bit samples
+at 44.1 kHz. These are the settings we will use in our project.
+
+If you'd like to learn more about sampling, ADC, and DAC, you can read
+Chapter 3 of
+[The Scientist and Engineer's Guide to Digital Signal Processing](http://www.dspguide.com/ch3.htm).
+
+## Importing Pin Assignments
+
+So far, we've been putting our pin assignments in manually. This will get
+pretty tedious once we start using more pins. Fortunately, Quartus provides
+a way to import pin assignments from a settings file. You can download the
+settings file from [here](https://www.dropbox.com/s/htdzq5gof4vc1ll/sockit.qsf).
+To import it into your quartus project, go to "Assignments" -> "Import Assignments"
+and put in the path to the file you want to import from.
+
+## Finding the Datasheets
+
+The SoCKit board uses the Analog Devices SSM2603 audio codec. You can find the
+[datasheet](http://www.analog.com/static/imported-files/data_sheets/SSM2603.pdf)
+for this codec on the manufacturer's website. We will be using this datasheet
+as our primary reference. It's also helpful to know how the codec is connected
+to the FPGA, as this will tell us the correspondence between the pin names
+used on the FPGA and the pin names used in the codec datasheet.
+These connections can be found on page 19 of the
+[SoCKit Schematics](http://www.rocketboards.org/pub/Documentation/ArrowSoCKitEvaluationBoard/C5S_REV_C_05_07_13.pdf).
+
+## I<sup>2</sup>C Configuration Interface
+
+Before the Audio Codec can start capturing or playing audio, it has to be
+configured with options such as the sampling rate and sample width (how many
+bits each sample is). The protocol the audio codec uses for configuration
+is the Inter-Integrated Circuit (I<sup>2</sup>C) protocol. This is a two-wire
+protocol originally designed by Phillips Semiconductor in the 1980s to connect
+peripherals to the CPU in TV sets. Nowadays it's used to connect low-speed
+peripherals in all sorts of devices. You can find detailed information
+about the I<sup>2</sup>C protocol at [Embedded Systems Academy](http://www.esacademy.com/en/library/technical-articles-and-documents/miscellaneous/i2c-bus.html),
+from which I took all the timing diagrams you will see below.
+I will describe the basic protocol as used by the SoCKit board here.
+
+### The I<sup>2</sup>C Protocol
+
+The two wires in the I<sup>2</sup>C protocol are labeled SDAT and SCLK for
+Serial Data and Serial Clock respectively. From these names you can probably
+guess what their functions are. In, I<sup>2</sup>C data is sent a bit at a time
+over the SDAT wire, with the separation between bits determined by clock cycles
+on the SCLK wire. SDAT and SCLK are also sometimes abbreviated as SDA or SCL.
+
+I<sup>2</sup>C is a master-slave protocol. The master initiates every
+transmission and drives the SCLK line. In our case, the FPGA is the master
+and the audio codec is the slave. According to the I<sup>2</sup>C spec, the
+SDAT and SCLK lines are both bidirectional and are connected to pull-up
+resistors. This means that if no unit is driving a bus line, the voltage will
+be high. If you look at the the SoCKit board schematics, however, only SDAT
+is bidirectional, and SCLK is connected as output only. This makes implementing
+our controller on the FPGA a bit simpler, as we don't have to worry about the
+slave holding the SCLK line low (this is called clock stretching).
+
+To initiate a transmission, the master keeps the SCLK line high and then
+does a high-to-low transition on the SDAT line.
+
+![Start](http://www.esacademy.com/assets/images/g01stast.gif)
+
+The start symbol is followed by transmission of the 7-bit slave address.
+This is necessary because multiple slaves can be connected to the same bus.
+The bits are transmitted one per SCLK cycle. The value can be changed during
+the low phase of SCLK and must remain stable during the high phase.
+
+![Transmission](http://www.esacademy.com/assets/images/g01sendb.gif)
+
+The bits are transmitted in big-endian order (most-significant bit first).
+After the seven bits of the address are transmitted, an eight read/write bit
+is transmitted. This should be 0 if the transmission is a write (master
+sending to slave) or 1 if the transmission is a read (master receiving from
+slave). In our case we will only be writing, so the read/write bit will
+always be 0.
+
+After the address and read/write bit are sent, the master allows the SDAT
+line to float for one SCLK cycle. The slave whose address has just been
+transmitted should send an acknowledgement (ACK) by pulling SDAT low for the
+entire cycle.
+
+![ACK](http://www.esacademy.com/assets/images/g01getak.gif)
+
+After receiving the ACK, the master transmits the data a bit at a time in the
+same way it sent the address and read/write bit. After every eight bits,
+the master should wait one cycle for an ACK from the slave.
+
+After the last byte is acknowledged by the slave, the master sends a STOP
+symbol to end the transmission by sending a low-to-high transition on SDAT
+while SCLK is held high.
+
+![Stop](http://www.esacademy.com/assets/images/g02stast.gif)
+
+If you look on page 17 of the SSM2603 datasheet, you will see that the codec
+takes 16-bit data words. Therefore, each transmission will have 3 acks
+(1 after address + r/w bit, 1 after each data byte) before a stop symbol must
+be sent. Another questions which must be answered about the codec's
+I<sup>2</sup>C interface is how fast SCLK can be toggled. If you look at
+page 5 of the datasheet, you will see that the maximum SCLK frequency is
+526 kHz.
+
+The I<sup>2</sup>C controller Verilog module looks like this.
+
+{% highlight verilog %}
+module i2c_controller (
+    input  clk,
+
+    output i2c_sclk,
+    inout  i2c_sdat,
+
+    input  start,
+    output done,
+    output ack,
+
+    input [23:0] i2c_data
+);
+
+reg [23:0] data;
+
+reg [4:0] stage;
+reg [6:0] sclk_divider;
+reg clock_en = 1'b0;
+
+// don't toggle the clock unless we're sending data
+// clock will also be kept high when sending START and STOP symbols
+assign i2c_sclk = (!clock_en) || sclk_divider[6];
+wire midlow = (sclk_divider == 7'h1f);
+
+reg sdat = 1'b1;
+// rely on pull-up resistor to set SDAT high
+assign i2c_sdat = (sdat) ? 1'bz : 1'b0;
+
+reg [2:0] acks;
+
+parameter LAST_STAGE = 5'd29;
+
+assign ack = (acks == 3'b000);
+assign done = (stage == LAST_STAGE);
+
+always @(posedge clk) begin
+    if (start) begin
+        sclk_divider <= 7'd0;
+        stage <= 5'd0;
+        clock_en = 1'b0;
+        sdat <= 1'b1;
+        acks <= 3'b111;
+        data <= i2c_data;
+    end else begin
+        if (sclk_divider == 7'd127) begin
+            sclk_divider <= 7'd0;
+
+            if (stage != LAST_STAGE)
+                stage <= stage + 1'b1;
+
+            case (stage)
+                // after start
+                5'd0:  clock_en <= 1'b1;
+                // receive acks
+                5'd9:  acks[0] <= i2c_sdat;
+                5'd18: acks[1] <= i2c_sdat;
+                5'd27: acks[2] <= i2c_sdat;
+                // before stop
+                5'd28: clock_en <= 1'b0;
+            endcase
+        end else
+            sclk_divider <= sclk_divider + 1'b1;
+
+        if (midlow) begin
+            case (stage)
+                // start
+                5'd0:  sdat <= 1'b0;
+                // byte 1
+                5'd1:  sdat <= data[23];
+                5'd2:  sdat <= data[22];
+                5'd3:  sdat <= data[21];
+                5'd4:  sdat <= data[20];
+                5'd5:  sdat <= data[19];
+                5'd6:  sdat <= data[18];
+                5'd7:  sdat <= data[17];
+                5'd8:  sdat <= data[16];
+                // ack 1
+                5'd9:  sdat <= 1'b1;
+                // byte 2
+                5'd10: sdat <= data[15];
+                5'd11: sdat <= data[14];
+                5'd12: sdat <= data[13];
+                5'd13: sdat <= data[12];
+                5'd14: sdat <= data[11];
+                5'd15: sdat <= data[10];
+                5'd16: sdat <= data[9];
+                5'd17: sdat <= data[8];
+                // ack 2
+                5'd18: sdat <= 1'b1;
+                // byte 3
+                5'd19: sdat <= data[7];
+                5'd20: sdat <= data[6];
+                5'd21: sdat <= data[5];
+                5'd22: sdat <= data[4];
+                5'd23: sdat <= data[3];
+                5'd24: sdat <= data[2];
+                5'd25: sdat <= data[1];
+                5'd26: sdat <= data[0];
+                // ack 3
+                5'd27: sdat <= 1'b1;
+                // stop
+                5'd28: sdat <= 1'b0;
+                5'd29: sdat <= 1'b1;
+            endcase
+        end
+    end
+end
+
+endmodule
+{% endhighlight %}
+
+SCLK is divided down by 128, giving us a frequency of about 390 kHz. The codec
+steps through the bits one at a time, not checking the acks until all 24 bits
+(7-bit address + r/w bit + 16-bit data) are transmitted. A transmission is
+started when the `start` signal is set high, and `done` is set when the
+transmission is complete. The `ack` signal is set high if all of the ACKs were
+received. Another thing to note is that we rely on the pull-up resistor on
+SDAT in order to set SDAT to 1.
+
+### SSM2603 Register Settings
+
+Now we have a way to send data through the configuration interface, but what
+data do we send? For that we must consult the datasheet. The first thing we
+need to know is what the slave address of the audio codec is. Page 17 of the
+datasheet states
+
+> If the CSB pin is set to 0, the address selected is 0011010; if 1,
+> the address is 0011011
+
+You can figure out what CSB is set to on the SoCKit by looking at the
+schematic. It's actually a bit ambiguous in the schematic, which shows that
+CSB is connected to both Vdd and ground through resistors. However, the schematic 
+helpfully notes that the default I<sup>2</sup>C address is 0x34 / 0x35.
+Note that this is an 8-bit word. The difference in the LSB refers to the
+read/write bit. Since we are only writing, the address we use is 0x34.
+This means CSB must be set to 0.
+
+Now we need to figure out what the 16-bit data words are. The audio codec
+organizes its configuration variables into 19 9-bit registers. The first
+seven bits of the data transmission are the register address, and the last
+nine bits are the register contents.
+
+The section on control register sequencing states
+
+> Enable all of the necessary power management bits of
+> Register R6 with the exception of the out bit (Bit D4). The
+> out bit should be set to 1 until the final step of the control
+> register sequence.
+
+We will be using all parts of the codec, so for now, set all of the bits
+in register 6 to 0 except bit 4.
+
+Now let's start from the top and work our way down.
+
+Register 0 controls the input volume of the left channel ADC. We don't want
+simultaneous loading of volume, so set bit 8 to 0. We also don't want mute,
+so set bit 7 to 0 as well. Bits 5-0 specify the volume in decibels.
+A decibel is a unit of signal power that operates on a logarithmic scale.
+If a signal is specified as `x` dB, that means it is 10 <sup>x / 10</sup>
+times more powerful than the baseline. You can specify any volume you want here,
+but I suggest you just choose 0 dB (the baseline), which is 010111.
+Choose the same options for the right-channel ADC control in register 1.
+
+Registers 2 and 3 control left-channel and right-channel DAC volume,
+respectively. Put a 0 for bit 8, and set the volume to 0 dB, which is
+1111001.
+
+Register 4 contains options for the analog audio path. Bits 7-5 control the
+[sidetone](https://en.wikipedia.org/wiki/Sidetone), which allows some of the
+microphone input to be mixed back to the output. This is used mainly in
+telephones because usability studies indicate that it is important feature.
+We will be feeding the microphone input back to the output anyway, so we do
+not need sidetone. Set the attenuation to 11, and the sidetone enable to 0.
+Bit 4 is the DAC select. We will be using the DAC, so set this to 1.
+Bits 3 and 2 control which input port (line input or microphone input) gets
+used as the input to the ADC. We want to use the microphone, so set the
+BYPASS to 0 and the INSEL to 1. Bit 1 is to mute the microphone, which we don't
+want, so set this to 0. Bit 0 is MICBOOST, which controls the microphone
+amplifier. You can set this to either 0, for no boost, or 1, for 100x boost.
+
+Register 5 controls the digital audio path. Bit 4 sets whether or not the
+DC offset is stored. We want the DC offset to be cleared, so set this to 0.
+Bit 3 is for digital mute, set this to 0. Bits 2-1 are for de-emphasis control,
+which helps improve the signal-to-noise ratio of the audio. Set these bits
+to 10, since we will be using a 44.1 kHz sampling rate. Bit 0 controls the
+ADC high pass filter. Set this to 0, the default.
+
+Register 7 sets the options for the digital audio interface, which we will
+use to send and receive samples from the codec. We want the codec to run
+in left-justified slave mode with 16-bit samples. Set BCLKINV, MS, LRSWAP,
+and LRP to 0. Set WL to 00 for 16 bit audio, and set Format to 01 for
+left-justified mode. I will explain what all of these things mean in the next
+section.
+
+Register 8 controls the sampling rate. We want a 44.1 kHz rate for both the
+ADC and the DAC. According to table 30 in the datasheet, this means we should
+set CLKODIV2 and CLKDIV2 to 0, SR to 1000, the base oversampling rate to 0
+for 256x the sampling rate, and USB mode select to 0.
+
+Finally, we set register 6 to all zeros to power on the output and bit 0
+of register 9 to 1 to activate the digital core.
+
+Here is the final configuration controller. It steps through the different
+16-bit data words for the I<sup>2</sup>C controller one at a time.
+
+{% highlight verilog %}
+module i2c_av_config (
+    input clk,
+    input reset,
+
+    output i2c_sclk,
+    inout  i2c_sdat,
+
+    output [3:0] status
+);
+
+reg [23:0] i2c_data;
+reg [15:0] lut_data;
+reg [3:0]  lut_index = 4'd0;
+
+parameter LAST_INDEX = 4'ha;
+
+reg  i2c_start = 1'b0;
+wire i2c_done;
+wire i2c_ack;
+
+i2c_controller control (
+    .clk (clk),
+    .i2c_sclk (i2c_sclk),
+    .i2c_sdat (i2c_sdat),
+    .i2c_data (i2c_data),
+    .start (i2c_start),
+    .done (i2c_done),
+    .ack (i2c_ack)
+);
+
+always @(*) begin
+    case (lut_index)
+        4'h0: lut_data <= 16'h0c10; // power on everything except out
+        4'h1: lut_data <= 16'h0017; // left input
+        4'h2: lut_data <= 16'h0217; // right input
+        4'h3: lut_data <= 16'h0479; // left output
+        4'h4: lut_data <= 16'h0679; // right output
+        4'h5: lut_data <= 16'h08d4; // analog path
+        4'h6: lut_data <= 16'h0a04; // digital path
+        4'h7: lut_data <= 16'h0e01; // digital IF
+        4'h8: lut_data <= 16'h1020; // sampling rate
+        4'h9: lut_data <= 16'h0c00; // power on everything
+        4'ha: lut_data <= 16'h1201; // activate
+        default: lut_data <= 16'h0000;
+    endcase
+end
+
+reg [1:0] control_state = 2'b00;
+
+assign status = lut_index;
+
+always @(posedge clk) begin
+    if (reset) begin
+        lut_index <= 4'd0;
+        i2c_start <= 1'b0;
+        control_state <= 2'b00;
+    end else begin
+        case (control_state)
+            2'b00: begin
+                i2c_start <= 1'b1;
+                i2c_data <= {8'h34, lut_data};
+                control_state <= 2'b01;
+            end
+            2'b01: begin
+                i2c_start <= 1'b0;
+                control_state <= 2'b10;
+            end
+            2'b10: if (i2c_done) begin
+                if (i2c_ack) begin
+                    if (lut_index == LAST_INDEX)
+                        control_state <= 2'b11;
+                    else begin
+                        lut_index <= lut_index + 1'b1;
+                        control_state <= 2'b00;
+                    end
+                end else
+                    control_state <= 2'b00;
+            end
+        endcase
+    end
+end
+
+endmodule
+{% endhighlight %}
