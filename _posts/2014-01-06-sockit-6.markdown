@@ -290,7 +290,7 @@ As you can see, `add wave` is the basic way of adding a signal to the
 viewer. You can add refer to internal signals using slashes.
 You can also refer to signals inside generate statements using square brackets.
 In this case, the signal name must be wrapped in curly braces to prevent the
-square brackets from being interpreted as indexing into a TCL array.
+square brackets from being interpreted as command substitution.
 You can also use the `-radix` option to change the radix displayed for a
 multi-bit signal in the simulation window. The default is binary, but you can
 also choose `unsigned`, `decimal`, or `hexadecimal`.
