@@ -381,8 +381,20 @@ Before you try to program the FPGA, make sure that the USB Blaster drivers
 are installed correctly (check the Arch Wiki article at the top for Linux,
 or [this](http://www.altera.com/download/drivers/usb-blaster/dri-usb-blaster-vista.html)
 article for Windows). Make sure you have the SoCKit connected to your computer
-correctly. The USB Blaster port is the microUSB port farthest to the right,
-if the ports are facing toward you. Once you are sure the drivers are working,
+correctly. The USB Blaster port is the microUSB port farthest to the right
+if the ports are facing toward you.
+
+<div class="warning">
+<p><span class="alert">Careful!</span> Early versions of the SoCKit board
+had surface-mounted microUSB ports with no reinforcement. The microUSB ports
+on these boards are likely to break off if you push too hard when inserting
+the USB cable. Later versions of the board came with a reinforcing metal plate
+to fix this problem. If you have one of the earlier boards, be very careful
+when plugging in the microUSB cable.
+</p>
+</div>
+
+Once you are sure the drivers are working,
 open up the programmer by double-clicking on "Program Device" in the "Tasks"
 window, by clicking on "Tools" -> "Programmer" in the menu, or the Programmer
 button in the toolbar (second from right in the above image). In the new window,
@@ -392,6 +404,7 @@ menu, you may want to check that the board is on, the USB blaster is connected,
 and the drivers are installed properly. Once you've selected the correct
 hardware, press the "Auto Detect" button in the programmer window.
 It may ask you to choose your device. Choose "5CSXFC6D6".
+
 You should now see two devices, 5CSXFC6D6F31 and SOCVHPS. The former is the
 FPGA, the latter is the ARM processor. Right click on the entry for the FPGA
 and select "Change File". Pick the "sockit\_test.sof" file that was generated
