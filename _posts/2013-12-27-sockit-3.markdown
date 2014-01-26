@@ -30,7 +30,7 @@ The method used by most modern processors is memory-mapped IO, in which the
 interconnect, and different parts of the address space are mapped either to
 actual RAM or to hardware peripherals.
 
-![Memory Mapped IO](http://i.imgur.com/HyPJkvi.png)
+<object type="image/svg+xml" data="/svg/memory-mapped-io.svg">MMIO</object>
 
 The processor can then send commands to a peripheral by writing to the
 peripheral's address space and get information back by reading from the
