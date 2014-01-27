@@ -673,4 +673,4 @@ have any delay.
 If you program this description onto the board, hook up a mic and speakers,
 and flip switch 2, you should get an interesting echo effect.
 Try playing around with the filter weights, filter size, and delay time to
-see how that affects your perception of the sound.
+see how they affect your perception of the sound.
