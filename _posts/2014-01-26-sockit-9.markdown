@@ -13,10 +13,10 @@ and software tools for this part can be found in the
 of the Github repo.
 
 To implement these filters we will use a finite impulse response (FIR) filter.
-How this works essentially is that the output is the weighted sum of N
+The way an FIR filter works is that the output is the weighted sum of N
 previously recorded inputs. By choosing different weights, we can achieve
 different effects, such as low-pass filtering and high-pass filtering.
-If you'd like to learn more about how FIR filters work, I've written an
+If you'd like to learn more about FIR filters, I've written an
 [IPython notebook](http://nbviewer.ipython.org/github/zhemao/digital_filters/blob/master/Digital%20Filters.ipynb)
 explaining the concept.
 
@@ -34,11 +34,11 @@ it the "Kernel ROM" because the set of weights is often referred to as a
 audio buffer and a weight from the kernel ROM, multiply the two together, and
 then accumulate the products (through addition) into a register.
 
-Notice that in this block diagram, there are registers between each
+Notice that, in this block diagram, there are registers between each
 computational block. This kind of architecture is called a pipelined
 architecture, and is fairly common in hardware design. The main benefit of
-this architecture is that the pipeline stages can do useful work at the same
-time. That is, on each cycle, data is fetched from the memories, the multipliers
+this architecture is that the pipeline stages are operating concurrently.
+That is, on each cycle, the memories are fetching data, the multipliers
 are multiplying the data fetched one cycle ago, and the adder is adding the
 current accumulator value with the result of multiplying the data fetched
 two cycles ago. This means that, if our kernel has size N, the total number
@@ -51,9 +51,9 @@ time, in which case it would take `3 * N` cycles.
 In order to implement this filter, we need to be able to compute outputs
 within a certain amount of time. An input is available when `sample_end`
 is asserted, and the corresponding output must be ready before the next time
-`sample_req` is asserted. If we can't do this, the system isn't going to work.
-This is the "real-time" in "real-time audio effects".
-We are subject to a deadline on how long it takes to respond to an event.
+`sample_req` is asserted. If we can't make this deadline, the system isn't
+going to work. This is the "real-time" in "real-time audio effects".
+We are subject to constraints on how long it can take to respond to an event.
 
 We've seen that the time it takes to compute an output depends on how large
 the filter kernel is. Since a larger kernel gives a better gain, it is
@@ -63,13 +63,15 @@ the deadline.
 With a sampling rate of 44.1 kHz, the sampling period is about 22.7
 microseconds. The input sample is available a quarter of the way through the
 cycle, and the output needs to be ready at the beginning of the next cycle.
-That means our computation must take less that about 17 microseconds.
+That means our computation must take less than about 17 microseconds.
 The main clock is 50 MHz, which gives us 20 nanoseconds per cycle. That gives
 us about `17000 / 20 = 850` cycles to perform our computation. So you could
 expand the kernel to around 840 words and still be able to meet the deadline.
-I chose to use a kernel with 101 words (you generally want the number to be odd),
-because a software prototype (running on my laptop) seemed to give a pretty
-good quality at this point.
+I chose to use a kernel with 101 words (you generally want the number to be odd).
+I chose this by writing a software FIR filter implementation (running on my
+laptop, not the Cyclone V) and testing different kernel sizes. You get pretty
+good quality at 101, and increasing past that point doesn't seem to give
+much improvement.
 
 ## Circular Buffers
 
@@ -154,28 +156,31 @@ void lowpass(float critFreq, int W, int sampRate, float *result)
 	int M = 2 * W;
 
 	for (i = 0; i <= M; i++) {
+		// t is symmetric around the Y axis
 		t = (i - W) / (float) sampRate;
 		if (t == 0) {
+			// avoid discontinuity at t = 0
 			result[i] = 1.0f;
 			sum += 1.0f;
 		} else {
+			// sinc function
 			h = sin(2 * M_PI * critFreq * t) / (2 * M_PI * critFreq * t);
+			// hamming window
 			h *= (0.54 - 0.46 * cos(2 * M_PI * i / M));
 			result[i] = h;
 			sum += h;
 		}
 	}
 
+	// normalize so that DC gain is 1
 	for (i = 0; i <= M; i++) {
 		result[i] /= sum;
 	}
 }
 {% endhighlight %}
 
-This generates the filter kernel for a windowed sinc filter using a Hamming
-window and is normalized so that the DC gain is 1 (i.e. the sum of all the
-weights is 1). There is one slight problem here though. These are floating
-point numbers, but we are using integer multipliers in our hardware design. 
+There is one slight problem here though. These are floating point numbers,
+but we are using integer multipliers in our hardware design. 
 Since all of our weights are between 1 and -1, simply converting the floating
 point weights to integers and using those clearly won't work.
 We could switch to using a floating-point pipeline, but that would complicate
@@ -190,7 +195,7 @@ With fixed point arithmetic that becomes
 
     1/S * sum(to_int(S * kernel[i]) * input[n - i]) for all i
 
-When S is some constant. The results will be the same, except with a little
+Where S is some constant. The results will be the same, except with a little
 loss of precision. Since our floating points numbers are all between 1 and -1
 and we want to convert to 16-bit integers, we can simply scale up by the
 largest signed 16-bit integer value.
@@ -212,7 +217,7 @@ arguments, the critical frequency and the kernel width. The kernel is written
 out in big-endian binary format to standard output. I used a critical
 frequency of 880 Hz and a width of 50 (which gives a kernel size of 101).
 Once you have the binary, you will need to convert it into intel hex format
-for the for the ROM initialization. I used the
+for the ROM initialization. I used the
 [srecord](http://srecord.sourceforge.net/) tool to do this.
 
     srec_cat lowpassfilter.bin -binary -o lowpassfilter.hex -intel
@@ -228,7 +233,7 @@ the kernel address reaches the end. In this way, the audio samples are
 accessed from oldest to newest. If you've looked at the FIR filter formula
 given in the Wikipedia article, you will notice this is actually backwards.
 Fortunately, our low-pass filter kernel is symmetric, so it doesn't matter
-what order we go in. If you are trying to use an asymmetric filter (which
+which direction we go in. If you are trying to use an asymmetric filter (which
 is rather uncommon), you can simply reverse the order of the weights in the ROM.
 
 {% highlight verilog %}
@@ -309,7 +314,8 @@ feeding in to the next on each cycle. This is to keep the signal synchronized
 along the pipeline stages. On `reset`, the first multiplier result has not
 yet been computed, so the accumulator should definitely not be enabled.
 Similarly, when `kernel_index` reaches the last address, there is still
-computation occurring in the later stages of the pipeline. Therefore, we need
+computation occurring in the later stages of the pipeline, so we don't want to
+disable the accumulator yet. Therefore, we need
 to put a register for the enable signal between each stage of the pipeline
 up to the accumulator. The `acc_en_0` register is in the same stage as the
 `kernel_index` and `audio_index` registers. The `acc_en_1` register is in
@@ -439,10 +445,10 @@ the `fir_filter` module.
 Simply playing a low-pass filtered version of the input on the output won't
 sound very interesting. Since you'll still hear the input, and the output is
 simply the input with some frequencies attenuated, the input will drown out
-the output. To get an interesting effect, you can add some delay to the output. 
-This will create a sort of echo effect.
+the output. What would be more interesting is if we added some delay to the
+output. This will create a sort of echo.
 
-To create a delay, you will need to save the output samples in a buffer, and
+To create a delay, you will need to save the output samples in a buffer and
 only start pulling then out after a certain number of samples have been
 written. Sound familiar? That's right, we want a circular buffer again.
 This time it's a bit simpler, since we only ever read the "oldest" value in
