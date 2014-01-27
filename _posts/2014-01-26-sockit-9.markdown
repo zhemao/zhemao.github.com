@@ -1,0 +1,676 @@
+---
+title: Exploring the Arrow SoCKit Part IX - Real-time Audio Filters
+layout: default
+categories: [blog, fpga]
+---
+
+In the last post, we looked at how to interface with the audio codec on the
+Cyclone V. Now, we will use the audio codec to implement a real-time audio
+filter. This filter will take in samples from the ADC, transform them, and
+output the transformed samples on the DAC. All of the hardware descriptions
+and software tools for this part can be found in the
+[part 9 branch](https://github.com/zhemao/rtaudio_effects/tree/part9)
+of the Github repo.
+
+To implement these filters we will use a finite impulse response (FIR) filter.
+How this works essentially is that the output is the weighted sum of N
+previously recorded inputs. By choosing different weights, we can achieve
+different effects, such as low-pass filtering and high-pass filtering.
+If you'd like to learn more about how FIR filters work, I've written an
+[IPython notebook](http://nbviewer.ipython.org/github/zhemao/digital_filters/blob/master/Digital%20Filters.ipynb)
+explaining the concept.
+
+## Block Diagram
+
+Before we begin implementing our filter, it's helpful to draw out a simple
+block diagram.
+
+<object type="image/svg+xml" data="/svg/fir-filter-pipeline.svg">FIR</object>
+
+Our audio samples will be written to a circular buffer of size N.
+The weights of the FIR filter will be held in a ROM also of size N (I call
+it the "Kernel ROM" because the set of weights is often referred to as a
+"kernel"). To compute the next output, we repeatedly fetch a sample from the
+audio buffer and a weight from the kernel ROM, multiply the two together, and
+then accumulate the products (through addition) into a register.
+
+Notice that in this block diagram, there are registers between each
+computational block. This kind of architecture is called a pipelined
+architecture, and is fairly common in hardware design. The main benefit of
+this architecture is that the pipeline stages can do useful work at the same
+time. That is, on each cycle, data is fetched from the memories, the multipliers
+are multiplying the data fetched one cycle ago, and the adder is adding the
+current accumulator value with the result of multiplying the data fetched
+two cycles ago. This means that, if our kernel has size N, the total number
+of cycles it takes to compute the result is `N + 3`.
+This is a lot faster than if we only performed one step of computation at a
+time, in which case it would take `3 * N` cycles.
+
+## Counting Cycles
+
+In order to implement this filter, we need to be able to compute outputs
+within a certain amount of time. An input is available when `sample_end`
+is asserted, and the corresponding output must be ready before the next time
+`sample_req` is asserted. If we can't do this, the system isn't going to work.
+This is the "real-time" in "real-time audio effects".
+We are subject to a deadline on how long it takes to respond to an event.
+
+We've seen that the time it takes to compute an output depends on how large
+the filter kernel is. Since a larger kernel gives a better gain, it is
+important for us to figure out how big we can make the kernel without missing
+the deadline.
+
+With a sampling rate of 44.1 kHz, the sampling period is about 22.7
+microseconds. The input sample is available a quarter of the way through the
+cycle, and the output needs to be ready at the beginning of the next cycle.
+That means our computation must take less that about 17 microseconds.
+The main clock is 50 MHz, which gives us 20 nanoseconds per cycle. That gives
+us about `17000 / 20 = 850` cycles to perform our computation. So you could
+expand the kernel to around 840 words and still be able to meet the deadline.
+I chose to use a kernel with 101 words (you generally want the number to be odd),
+because a software prototype (running on my laptop) seemed to give a pretty
+good quality at this point.
+
+## Circular Buffers
+
+We need to store the N last inputs to the audio buffer as they come in from
+the ADC. In order to do this, we need a
+[Circular Buffer](https://en.wikipedia.org/wiki/Circular_buffer).
+This is a data structure which is basically an array that wraps back around on
+itself. Data is always written to the "head" of the buffer. The address of the
+"head" is incremented on each write. When the head is at the last address,
+it goes back to address 0 on the next write. In hardware, we can implement
+this using block RAM for the "array" and storing the "head" address in a
+register.
+
+{% highlight verilog %}
+module ring_buffer (
+    input clk,
+    input reset,
+
+    input  [6:0] last_addr,
+    output [6:0] cur_addr,
+
+    input  fifo_write,
+    input  [15:0] fifo_data,
+
+    input  [6:0]  readaddr,
+    output [15:0] readdata
+);
+
+reg [6:0] cur_index = 7'd0;
+assign cur_addr = cur_index;
+
+audio_ram aram (
+    .clock (clk),
+    .data (fifo_data),
+    .rdaddress (readaddr),
+    .wraddress (cur_index),
+    .wren (fifo_write),
+    .q (readdata)
+);
+
+always @(posedge clk) begin
+    if (reset) begin
+        cur_index <= 7'd0;
+    end else if (fifo_write) begin
+        if (cur_index == last_addr)
+            cur_index <= 7'd0;
+        else
+            cur_index <= cur_index + 1'b1;
+    end
+end
+
+endmodule
+{% endhighlight %}
+
+The `audio_ram` component here was generated using the 2-port RAM megafunction
+in megawizard. To generate this yourself, give the RAM 128 16-bit words with
+no registers on the output.
+
+## Multiplier
+
+The best way to implement a 16 by 16 multiplier on the FPGA is to use the
+dedicated multiplier circuitry. To access the dedicated multipliers, we will
+need to use MegaWizard. The multiplier megafunction is under "Arithmetic"
+-> "LPM\_MULT". In the "General" tab of the wizard, select 16 as the width of
+the "dataa" and "datab" inputs. In the "General2" tab, choose signed
+multiplication for "Multiplication type" and "Use the dedicated multiplier
+circuitry" for "Implementation". In the "Pipelining tab", choose no pipelining
+and default optimization. After you've made these selections, press "Finish".
+
+## Generating ROM Data
+
+The kernel ROM is just a 1-port ROM. This is easily generated from a
+megafunction. The hard part is figuring out what the ROM values should be.
+We want to use a low-pass [windowed sinc filter](http://www.dspguide.com/ch16.htm).
+The values for this filter can be generated using the following C code.
+
+{% highlight c %}
+void lowpass(float critFreq, int W, int sampRate, float *result)
+{
+	int i;
+	float t, h, sum = 0.0f;
+	int M = 2 * W;
+
+	for (i = 0; i <= M; i++) {
+		t = (i - W) / (float) sampRate;
+		if (t == 0) {
+			result[i] = 1.0f;
+			sum += 1.0f;
+		} else {
+			h = sin(2 * M_PI * critFreq * t) / (2 * M_PI * critFreq * t);
+			h *= (0.54 - 0.46 * cos(2 * M_PI * i / M));
+			result[i] = h;
+			sum += h;
+		}
+	}
+
+	for (i = 0; i <= M; i++) {
+		result[i] /= sum;
+	}
+}
+{% endhighlight %}
+
+This generates the filter kernel for a windowed sinc filter using a Hamming
+window and is normalized so that the DC gain is 1 (i.e. the sum of all the
+weights is 1). There is one slight problem here though. These are floating
+point numbers, but we are using integer multipliers in our hardware design. 
+Since all of our weights are between 1 and -1, simply converting the floating
+point weights to integers and using those clearly won't work.
+We could switch to using a floating-point pipeline, but that would complicate
+out hardware quite a bit. Fortunately, there is an easy way around this problem.
+We can simply use fixed point arithmetic. Basically, we want to scale all of
+our weights up, convert to integers, and then scale the result of the
+computation down by the same amount. So, if our original formula is
+
+    sum(kernel[i] * input[n - i]) for all i
+
+With fixed point arithmetic that becomes
+
+    1/S * sum(to_int(S * kernel[i]) * input[n - i]) for all i
+
+When S is some constant. The results will be the same, except with a little
+loss of precision. Since our floating points numbers are all between 1 and -1
+and we want to convert to 16-bit integers, we can simply scale up by the
+largest signed 16-bit integer value.
+
+{% highlight verilog %}
+void to_fixed_point(float *f_data, int16_t *i_data, int n)
+{
+	int i;
+
+	for (i = 0; i < n; i++)
+		i_data[i] = SHRT_MAX * f_data[i];
+}
+{% endhighlight %}
+
+You can find the tool I wrote for generating kernels in the
+[software](https://github.com/zhemao/rtaudio_effects/tree/part9/software)
+directory of the git repo. The tool is called `lowpass` and takes two
+arguments, the critical frequency and the kernel width. The kernel is written
+out in big-endian binary format to standard output. I used a critical
+frequency of 880 Hz and a width of 50 (which gives a kernel size of 101).
+Once you have the binary, you will need to convert it into intel hex format
+for the for the ROM initialization. I used the
+[srecord](http://srecord.sourceforge.net/) tool to do this.
+
+    srec_cat lowpassfilter.bin -binary -o lowpassfilter.hex -intel
+
+## Filter Pipeline
+
+Here is the implementation of the computational part of the FIR pipeline.
+It had read ports to the audio buffer and the kernel ROM. When reset, the
+audio address is started at the buffer "head" and the kernel address is
+started at 0. It then increments both addresses on each cycle, wrapping the
+audio address around once it reaches the end. The computation stops once
+the kernel address reaches the end. In this way, the audio samples are
+accessed from oldest to newest. If you've looked at the FIR filter formula
+given in the Wikipedia article, you will notice this is actually backwards.
+Fortunately, our low-pass filter kernel is symmetric, so it doesn't matter
+what order we go in. If you are trying to use an asymmetric filter (which
+is rather uncommon), you can simply reverse the order of the weights in the ROM.
+
+{% highlight verilog %}
+module fir_filter (
+    input clk,
+    input reset,
+
+    input  [6:0]  start_addr,
+    input  [6:0]  last_addr,
+
+    output [6:0]  audio_addr,
+    input  [15:0] audio_data,
+
+    output [6:0]  kernel_addr,
+    input  [15:0] kernel_data,
+
+    output [15:0] result,
+    output done
+);
+
+reg acc_en_0 = 1'b0;
+reg acc_en_1 = 1'b0;
+reg acc_en_2 = 1'b0;
+reg [31:0] accum_value;
+
+reg [6:0] audio_index;
+reg [6:0] kernel_index;
+
+assign audio_addr = audio_index;
+assign kernel_addr = kernel_index;
+
+wire [31:0] mult_result;
+reg  [31:0] mult_reg;
+
+mult16 mult (
+    .dataa (audio_data),
+    .datab (kernel_data),
+    .result (mult_result)
+);
+
+always @(posedge clk) begin
+    acc_en_2 <= acc_en_1;
+    acc_en_1 <= acc_en_0;
+    mult_reg <= mult_result;
+
+    if (reset) begin
+        acc_en_0 <= 1'b1;
+        audio_index <= start_addr;
+        kernel_index <= 7'd0;
+        accum_value <= 32'd0;
+    end else begin
+        if (acc_en_0) begin
+            if (audio_index == last_addr)
+                audio_index <= 7'd0;
+            else
+                audio_index <= audio_index + 1'b1;
+            if (kernel_index == last_addr)
+                acc_en_0 <= 1'b0;
+            else
+                kernel_index <= kernel_index + 1'b1;
+        end
+        if (acc_en_2) begin
+            accum_value <= accum_value + mult_reg;
+        end
+    end
+end
+
+assign done = !(acc_en_2 || acc_en_0);
+assign result = accum_value[31:16];
+
+endmodule
+{% endhighlight %}
+
+One thing to note here are the `acc_en_*` registers. The enable signal tells
+the accumulator when to add another multiplier result into the register and
+when to leave the register value the same. There are three registers here, each
+feeding in to the next on each cycle. This is to keep the signal synchronized
+along the pipeline stages. On `reset`, the first multiplier result has not
+yet been computed, so the accumulator should definitely not be enabled.
+Similarly, when `kernel_index` reaches the last address, there is still
+computation occurring in the later stages of the pipeline. Therefore, we need
+to put a register for the enable signal between each stage of the pipeline
+up to the accumulator. The `acc_en_0` register is in the same stage as the
+`kernel_index` and `audio_index` registers. The `acc_en_1` register is in
+the same stage as the internal register of the memories. Finally, the `acc_en_2`
+register is in the same stage as `mult_reg` and is the enable input for the
+accumulator.
+
+## Hooking it Up
+
+Now we need to connect the computational pipeline to the memory and add
+ports which can be connected to the audio codec.
+
+{% highlight verilog %}
+module filter_ctrl (
+    input audio_clk,
+    input main_clk,
+    input reset,
+
+    input sample_end,
+    input sample_req,
+
+    input      [15:0] audio_input,
+    output reg [15:0] audio_output,
+
+    output finish
+);
+
+parameter LASTADDR = 7'd100;
+
+reg cur_end = 1'b0;
+reg last_end = 1'b0;
+
+reg  rb_fifo_write = 1'b0;
+wire [6:0] rb_cur_addr;
+
+reg  fir_reset = 1'b0;
+wire [6:0]  fir_audio_addr;
+wire [15:0] fir_audio_data;
+wire [6:0]  fir_kernel_addr;
+wire [15:0] fir_kernel_data;
+wire [15:0] fir_result;
+wire fir_done;
+
+reg cur_done;
+reg last_done;
+
+ring_buffer rb (
+    .clk (main_clk),
+    .reset (reset),
+
+    .last_addr(LASTADDR),
+    .cur_addr (rb_cur_addr),
+
+    .fifo_write (rb_fifo_write),
+    .fifo_data (audio_input),
+
+    .readaddr (fir_audio_addr),
+    .readdata (fir_audio_data)
+);
+
+fir_filter fir (
+    .clk (main_clk),
+    .reset (fir_reset),
+
+    .start_addr (rb_cur_addr),
+    .last_addr (LASTADDR),
+
+    .audio_addr (fir_audio_addr),
+    .audio_data (fir_audio_data),
+
+    .kernel_addr (fir_kernel_addr),
+    .kernel_data (fir_kernel_data),
+
+    .result (fir_result),
+    .done (fir_done)
+);
+
+kernel_rom krom (
+    .address (fir_kernel_addr),
+    .clock (main_clk),
+    .q (fir_kernel_data)
+);
+
+always @(posedge audio_clk) begin
+    if (sample_req) begin
+        audio_output <= fir_result;
+    end
+
+    cur_done <= fir_done;
+    last_done <= cur_done;
+end
+
+assign finish = cur_done && !last_done;
+
+always @(posedge main_clk) begin
+    cur_end <= sample_end;
+    last_end <= cur_end;
+
+    if (cur_end && !last_end) begin
+        rb_fifo_write <= 1'b1;
+    end else if (rb_fifo_write) begin
+        rb_fifo_write <= 1'b0;
+        fir_reset <= 1'b1;
+    end else begin
+        fir_reset <= 1'b0;
+    end
+end
+
+endmodule
+{% endhighlight %}
+
+Notice that there are two clocks here. That is because the audio codec is
+synchronized to a 11.2896 MHz clock, but we want the FIR computation to be
+performed as fast as possible (i.e. 50 MHz). The problem is that the audio
+codec and FIR filter will need to send signals to each other to tell when the
+audio data is valid. We are thus left with the problem of crossing clock
+domains. The standard way of solving this is to have two flip flops
+back-to-back. Rising edges can then be detected by ANDing the first flip-flop
+with the complement of the second flip-flop (i.e. the level was high on the
+last cycle but low on the cycle before that). The `cur_end` and `last_end`
+registers perform this function for the `sample_end` input and the `cur_done`
+and `last_done` registers perform this function for the `done` output from
+the `fir_filter` module.
+
+## Adding Delay
+
+Simply playing a low-pass filtered version of the input on the output won't
+sound very interesting. Since you'll still hear the input, and the output is
+simply the input with some frequencies attenuated, the input will drown out
+the output. To get an interesting effect, you can add some delay to the output. 
+This will create a sort of echo effect.
+
+To create a delay, you will need to save the output samples in a buffer, and
+only start pulling then out after a certain number of samples have been
+written. Sound familiar? That's right, we want a circular buffer again.
+This time it's a bit simpler, since we only ever read the "oldest" value in
+the buffer. Therefore, we can make life easier for ourselves by using the FIFO
+megafunction. It's under "Memory Compiler" -> "FIFO" in MegaWizard.
+
+In the first tab, choose 16 bits for the width and some large number for the
+depth. There are 44100 samples in a second, so a FIFO that is `N` deep will
+give you a `N / 44100` second delay. I used 4096, which corresponds to about 93
+milliseconds. In the same tab, make sure reading and writing is synchronized
+to the same clock. In the SCFIFO tab, make sure only "empty" and "full" are
+selected. In the "Rdreq Option, Blk Type" tab, choose "Normal synchronous
+FIFO mode" and "M10K" for the block type. In the
+"Optimization, Circuitry Protection" tab, choose "No" for registering the
+output. You should also disable the overflow and underflow checking. We will
+add our own logic to make sure we don't write to a full buffer or read from
+an empty one.
+
+## Putting it all Together
+
+Now that we have the filter and FIFO created, we can modify our `audio_effects`
+module from last time.
+
+{% highlight verilog %}
+module audio_effects (
+    input  audio_clk,
+    input  main_clk,
+    input  reset,
+
+    input  sample_end,
+    input  sample_req,
+
+    output [15:0] audio_output,
+    input  [15:0] audio_input,
+
+    input  [3:0]  control
+);
+
+reg  [15:0] romdata [0:99];
+reg  [6:0]  index = 7'd0;
+reg  [15:0] last_sample;
+reg  [15:0] dat;
+wire [15:0] filter_output;
+wire filter_finish;
+
+assign audio_output = dat;
+
+parameter SINE     = 0;
+parameter FEEDBACK = 1;
+parameter FILTER   = 2;
+
+parameter SINE_LAST = 7'd99;
+
+reg  fifo_read;
+reg  fifo_write;
+wire fifo_empty;
+wire fifo_full;
+wire [15:0] fifo_output;
+
+audio_fifo fifo (
+    .clock (audio_clk),
+    .data  (filter_output),
+    .rdreq (fifo_read),
+    .wrreq (fifo_write),
+    .empty (fifo_empty),
+    .full  (fifo_full),
+    .q     (fifo_output)
+);
+
+initial begin
+    romdata[0] = 16'h0000;
+    romdata[1] = 16'h0805;
+    romdata[2] = 16'h1002;
+    romdata[3] = 16'h17ee;
+    romdata[4] = 16'h1fc3;
+    romdata[5] = 16'h2777;
+    romdata[6] = 16'h2f04;
+    romdata[7] = 16'h3662;
+    romdata[8] = 16'h3d89;
+    romdata[9] = 16'h4472;
+    romdata[10] = 16'h4b16;
+    romdata[11] = 16'h516f;
+    romdata[12] = 16'h5776;
+    romdata[13] = 16'h5d25;
+    romdata[14] = 16'h6276;
+    romdata[15] = 16'h6764;
+    romdata[16] = 16'h6bea;
+    romdata[17] = 16'h7004;
+    romdata[18] = 16'h73ad;
+    romdata[19] = 16'h76e1;
+    romdata[20] = 16'h799e;
+    romdata[21] = 16'h7be1;
+    romdata[22] = 16'h7da7;
+    romdata[23] = 16'h7eef;
+    romdata[24] = 16'h7fb7;
+    romdata[25] = 16'h7fff;
+    romdata[26] = 16'h7fc6;
+    romdata[27] = 16'h7f0c;
+    romdata[28] = 16'h7dd3;
+    romdata[29] = 16'h7c1b;
+    romdata[30] = 16'h79e6;
+    romdata[31] = 16'h7737;
+    romdata[32] = 16'h7410;
+    romdata[33] = 16'h7074;
+    romdata[34] = 16'h6c67;
+    romdata[35] = 16'h67ed;
+    romdata[36] = 16'h630a;
+    romdata[37] = 16'h5dc4;
+    romdata[38] = 16'h5820;
+    romdata[39] = 16'h5222;
+    romdata[40] = 16'h4bd3;
+    romdata[41] = 16'h4537;
+    romdata[42] = 16'h3e55;
+    romdata[43] = 16'h3735;
+    romdata[44] = 16'h2fdd;
+    romdata[45] = 16'h2855;
+    romdata[46] = 16'h20a5;
+    romdata[47] = 16'h18d3;
+    romdata[48] = 16'h10e9;
+    romdata[49] = 16'h08ee;
+    romdata[50] = 16'h00e9;
+    romdata[51] = 16'hf8e4;
+    romdata[52] = 16'hf0e6;
+    romdata[53] = 16'he8f7;
+    romdata[54] = 16'he120;
+    romdata[55] = 16'hd967;
+    romdata[56] = 16'hd1d5;
+    romdata[57] = 16'hca72;
+    romdata[58] = 16'hc344;
+    romdata[59] = 16'hbc54;
+    romdata[60] = 16'hb5a7;
+    romdata[61] = 16'haf46;
+    romdata[62] = 16'ha935;
+    romdata[63] = 16'ha37c;
+    romdata[64] = 16'h9e20;
+    romdata[65] = 16'h9926;
+    romdata[66] = 16'h9494;
+    romdata[67] = 16'h906e;
+    romdata[68] = 16'h8cb8;
+    romdata[69] = 16'h8976;
+    romdata[70] = 16'h86ab;
+    romdata[71] = 16'h845a;
+    romdata[72] = 16'h8286;
+    romdata[73] = 16'h8130;
+    romdata[74] = 16'h8059;
+    romdata[75] = 16'h8003;
+    romdata[76] = 16'h802d;
+    romdata[77] = 16'h80d8;
+    romdata[78] = 16'h8203;
+    romdata[79] = 16'h83ad;
+    romdata[80] = 16'h85d3;
+    romdata[81] = 16'h8875;
+    romdata[82] = 16'h8b8f;
+    romdata[83] = 16'h8f1d;
+    romdata[84] = 16'h931e;
+    romdata[85] = 16'h978c;
+    romdata[86] = 16'h9c63;
+    romdata[87] = 16'ha19e;
+    romdata[88] = 16'ha738;
+    romdata[89] = 16'had2b;
+    romdata[90] = 16'hb372;
+    romdata[91] = 16'hba05;
+    romdata[92] = 16'hc0df;
+    romdata[93] = 16'hc7f9;
+    romdata[94] = 16'hcf4b;
+    romdata[95] = 16'hd6ce;
+    romdata[96] = 16'hde7a;
+    romdata[97] = 16'he648;
+    romdata[98] = 16'hee30;
+    romdata[99] = 16'hf629;
+end
+
+always @(*) begin
+    if (control[FEEDBACK])
+        dat <= last_sample;
+    else if (control[SINE])
+        dat <= romdata[index];
+    else if (control[FILTER])
+        dat <= fifo_output;
+    else
+        dat <= 16'd0;
+end
+
+always @(posedge audio_clk) begin
+    if (sample_end) begin
+        last_sample <= audio_input;
+    end
+
+    if (sample_req) begin
+        if (index == SINE_LAST)
+            index <= 7'd00;
+        else
+            index <= index + 1'b1;
+        if (fifo_full)
+            fifo_read <= 1'b1;
+    end else
+        fifo_read <= 1'b0;
+
+    if (filter_finish && !fifo_full)
+        fifo_write <= 1'b1;
+    else
+        fifo_write <= 1'b0;
+end
+
+filter_ctrl fc (
+    .audio_clk (audio_clk),
+    .main_clk  (main_clk),
+    .reset     (reset),
+
+    .sample_end (sample_end),
+    .sample_req (sample_req),
+
+    .audio_input (audio_input),
+    .audio_output (filter_output),
+    .finish (filter_finish)
+);
+
+endmodule
+{% endhighlight %}
+
+The key changes are that we added another setting to our multiplexer and some
+logic to read from the FIFO on `sample_req` and write to the FIFO when the
+FIR filter finishes. We only read when the FIFO is full, otherwise we wouldn't
+have any delay.
+
+## Conclusion
+
+If you program this description onto the board, hook up a mic and speakers,
+and flip switch 2, you should get an interesting echo effect.
+Try playing around with the filter weights, filter size, and delay time to
+see how that affects your perception of the sound.
