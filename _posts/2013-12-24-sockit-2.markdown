@@ -108,9 +108,13 @@ Clone the sources of the kernel for the SoCKit from RocketBoards.org.
     cd linux-socfpga
     git checkout -b sockit ACDS13.1_REL_GSRD_PR
 
-You will also need to download the
-[Linaro ARM toolchain](http://releases.linaro.org/13.11/components/toolchain/binaries/gcc-linaro-arm-linux-gnueabihf-4.8-2013.11_linux.tar.xz)
-to get the cross-compiler. Extract the tarball anywhere on your system and
+You will also need to download the Linaro ARM toolchain to get the C
+cross-compiler. Find the latest  release tarball for your system 
+[here](http://releases.linaro.org/latest/components/toolchain/binaries).
+If you are on Linux, you are looking for the tarball named something like
+"gcc-linaro-arm-linux-gnueabihf-*some-version-number*\_linux.tar.xz"
+
+Extract the tarball anywhere on your system and
 then add the "bin" subdirectory of the extracted folder to your path.
 If you've done this properly, you should be able to run the following command.
 
