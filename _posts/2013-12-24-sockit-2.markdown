@@ -212,6 +212,16 @@ works out, you will see the root filesystem image generated under
 This will format the root partition and extract the files onto it.
 Don't unmount the partition just yet, we'll need to add some more files.
 
+*Note* - Recent releases of the linaro toolchain can cause an issue in which
+`init` cannot find libc.so.6. If you get a problem like this, follow the
+workarounds described in [this Github issue](https://github.com/zhemao/zhemao.github.com/issues/9).
+To summarize, create symlinks on the partition from /lib to
+/lib/arm-linux-gnueabihf and /usr/lib to /usr/lib/arm-linux-gnueabihf.
+Running the following commands should do the trick.
+
+    sudo ln -s /lib /mnt/lib/arm-linux-gnueabihf
+    sudo ln -s /usr/lib /mnt/usr/lib/arm-linux-gnueabihf
+
 ## Step 6 - Install the kernel modules
 
 The kernel has been installed on the boot partition, but you will also need to
