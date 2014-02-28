@@ -1,0 +1,15 @@
+---
+title: EZ8 Soft Microcontroller
+layout: default
+category: project
+---
+
+EZ8 is an 8-bit processor architecture I designed to have a very
+simple encoding. The goal was to make the hardware implementation very easy
+and understandable. I implemented an EZ8 microcontroller in Verilog using a
+3-stage interlocking pipeline. The microcontroller can run on an Arrow SoCKit
+Cyclone V development board and interface with simple peripherals like leds,
+keys, switches, and a millisecond-precision timer. I also implemented a
+software emulator and an assembler for EZ8 assembly.
+The Verilog descriptions, software source code, and documentation can be found
+on [Github](https://github.com/zhemao/ez8).
