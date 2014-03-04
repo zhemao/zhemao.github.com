@@ -6,10 +6,60 @@ category: project
 
 EZ8 is an 8-bit processor architecture I designed to have a very
 simple encoding. The goal was to make the hardware implementation very easy
-and understandable. I implemented an EZ8 microcontroller in Verilog using a
-3-stage interlocking pipeline. The microcontroller can run on an Arrow SoCKit
-Cyclone V development board and interface with simple peripherals like leds,
-keys, switches, and a millisecond-precision timer. I also implemented a
-software emulator and an assembler for EZ8 assembly.
+and understandable. I implemented an EZ8 microcontroller in Verilog and ran it
+on an Arrow SoCKit Cyclone V development board. 
+
+## Architecture Overview
+
+The EZ8 architecture has an 8-bit address space and datapath with 16-bit
+instructions and a 12-bit instruction space. There is only one register,
+which is an accumulator register. Computational instructions like add,
+subtract, and bitwise operations take the accumulator and a memory address
+as arguments. There are also immediate versions of these instructions which
+take the accumulator and a literal as arguments.
+
+The control flow instructions take the form of unconditional jumps,
+like `goto`, `call`, `ret`, and `retint`, or conditional skip instructions,
+which advance the program counter by +2 instead of +1 if a certain condition
+is met. The `call` instruction is an unconditional jump which saves the
+next instruction address on a stack before jumping. The `ret` instruction does
+the inverse, popping an instruction off the stack and jumping to that
+instruction. The EZ8's stack has space for 15 instructions.
+
+## Microarchitecture Overview
+
+The microarchitecture of the processor consists of a 3-stage in-order pipeline.
+The stages of the pipeline are instruction decode, memory read / execute, and
+memory writeback.
+
+Here's a simplified block diagram.
+
+<object type="image/svg+xml" data="/svg/ez8-pipeline.svg">EZ8</object>
+
+The pipeline is mostly pretty straightforward. Bypassing the output of the
+ALU to the input of the memory controller resolves read-after-write hazards
+without having to stall or insert NOPs into the pipeline.
+
+The most complicated logic is built into the program counter controller.
+This unit resolves the control hazards that arise. It does this by sending
+the kill instruction, which disables writeback to the data memory, effectively
+turning a previously issued instruction into a NOP. If an instruction is an
+unconditional jump, the controller is not aware of this until after instruction
+decode, 1 cycle after issue. When an unconditional jump is detected, the
+controller kills the instruction issued after the jump instruction and then
+changes the program counter to the correct address. If a skip occurs, the
+controller does not know of it until 2 cycles after issuing the instruction.
+When a skip is detected, the controller kills the instruction after the skip
+and then continues as normal.
+
+## Functionality
+
+The microcontroller can interface with simple peripherals like leds, keys,
+switches, and a millisecond-precision timer through memory-mapped IO.
+I was able to program the microcontroller onto the Cyclone V FPGA and run
+an example program that swept LEDs back and forth either at regular intervals
+or on the press of a button, depending on the setting of a switch.
+
+I also implemented a software emulator and an assembler for EZ8 assembly.
 The Verilog descriptions, software source code, and documentation can be found
 on [Github](https://github.com/zhemao/ez8).
