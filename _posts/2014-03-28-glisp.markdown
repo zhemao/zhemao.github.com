@@ -1,0 +1,74 @@
+---
+title: Golang LISP Interpreter
+layout: default
+category: project
+---
+
+GLISP is a LISP interpreter I implemented in the Go programming language.
+It was designed as an embedded extension language for Go. It features a
+hand-rolled lexer and parser and executes on a simple stack-based virtual
+machine. The language features Clojure-like syntax, proper tail-call
+optimization, and an easy-to-use Go API.
+
+The code can be found on [Github](https://github.com/zhemao/glisp).
+
+{% highlight clojure %}
+; factorial algorithm implemented in GLISP
+; using tail recursion
+(defn factorial-loop [n acc]
+    (cond (= n 0) acc
+        (factorial-loop (- n 1) (* n acc))))
+(defn factorial [n]
+    (factorial-loop n 1))
+{% endhighlight %}
+
+{% highlight go %}
+package main
+
+import (
+    "github.com/zhemao/glisp/interpreter"
+    "errors"
+    "fmt"
+)
+
+// implementing factorial in Go to be used in GLISP
+
+func FactorialFunction(env *glisp.Glisp, name string,
+        args []glisp.Sexp) (glisp.Sexp, error) {
+    if len(args) != 1 {
+        return glisp.SexpNull, glisp.WrongNargs
+    }
+
+    res := 1
+    var n int
+    switch t := args[0].(type) {
+    case glisp.SexpInt:
+        n = int(t)
+    default:
+        return glisp.SexpNull, errors.New("factorial argument must be integer")
+    }
+
+    if n < 0 {
+        return glisp.SexpNull, errors.New("factorial argument must be positive")
+    }
+
+    for i := 1; i <= n; i++ {
+        res *= i
+    }
+
+    return glisp.SexpInt(res), nil
+}
+
+// creating glisp environment and calling factorial function
+
+func main() {
+    env := glisp.NewGlisp()
+    env.AddFunction("factorial", FactorialFunction)
+    res, _ := env.EvalString("(factorial 5)")
+
+    switch t := res.(type) {
+    case glisp.SexpInt:
+        fmt.Printf("result is %d\n", t)
+    }
+}
+{% endhighlight %}
