@@ -172,7 +172,7 @@ following options.
 
 First, go to "Target options" and set the following options
 
- * Target Architecture: ARM (big endian)
+ * Target Architecture: ARM (little endian)
  * Target Architecture Variant: cortex-A9
  * Target ABI: EABIhf
  * Floating point strategy: VFPv2
