@@ -1,0 +1,309 @@
+---
+title: Exploring the Arrow SoCKit Part X - Sending and Handling Interrupts
+layout: default
+categories: [blog, fpga]
+---
+
+Hi everyone! It's been a long time, but here is another Cyclone V tutorial
+blog post. This time, we will look at how to send interrupts from the FPGA
+to the HPS and handle the interrupt in software on the HPS.
+All hardware descriptions and software programs can be found on
+[Github](https://github.com/zhemao/interrupt_example).
+
+## What is an interrupt?
+
+Until now, all of our communication between HPS and FPGA has been initiated
+by the HPS. In order to detect changes in the state of the FPGA peripherals,
+the HPS has had to continuously poll the FPGA over the bus. If the state
+changes infrequently, but we want software to get notified of the change
+quickly, polling can be rather inefficient. In this case, it would be better
+if the FPGA could asynchronously notify the HPS of a change.
+
+The way the FPGA can do this is through interrupt. Interrupts are essentially
+signals going from the FPGA to an interrupt controller on the HPS. The FPGA
+can make an interrupt request (IRQ) by asserting the interrupt signal high.
+When an IRQ reaches the HPS, it saves its current state and jumps to an
+interrupt service routine (ISR). The ISR should service the IRQ by reading
+or writing some data from the peripheral. Once the ISR has returned, the
+processor jumps back to its original state.
+
+## Creating an Avalon Interrupt Interface
+
+We will create an FPGA peripheral from which we can read the state of the
+keys and switches attached to the FPGA. The peripheral should send an IRQ
+when the state changes.
+
+As with other signals sent between FPGA and HPS on the Cyclone V, interrupt
+signals go through an Avalon interface. The interrupt interface is quite simple,
+only a single one-bit irq signal is required. However, we also put in a
+memory-mapped interface so that the state of the inputs can be read.
+
+{% highlight verilog %}
+module user_input_device (
+    input clk,
+    input reset,
+    input [3:0] keys,
+    input [3:0] switches,
+
+    output avl_irq,
+    input  avl_read,
+    output [7:0] avl_readdata
+);
+
+reg [7:0] cur_inputs;
+reg [7:0] last_inputs;
+wire [7:0] changed_inputs = cur_inputs ^ last_inputs;
+
+reg irq;
+
+assign avl_irq = irq;
+assign avl_readdata = last_inputs;
+
+always @(posedge clk) begin
+    if (reset) begin
+        cur_inputs <= 8'd0;
+        last_inputs <= 8'd0;
+        irq <= 1'b0;
+    end else begin
+        cur_inputs <= {keys, switches};
+        last_inputs <= cur_inputs;
+        if (changed_inputs != 8'd0)
+            irq <= 1'b1;
+        else if (avl_read)
+            irq <= 1'b0;
+    end
+end
+
+endmodule
+{% endhighlight %}
+
+We pull the state of the keys and switches through two stages of registers.
+If `cur_inputs` and `last_inputs` are different, we set the `avl_irq` signal
+to high. According to the Avalon interrupt interface specification. The IRQ
+signal should not be deasserted until the slave has determined that it has
+been serviced. In this case, we consider the IRQ serviced once the input
+state is read, so we set `avl_irq` back down to 0 if `avl_read` is asserted.
+
+![user\_input\_device component](http://i.imgur.com/hI5LelR.png?1)
+
+We can attach this peripheral to the HPS using Qsys. In Qsys, create a new
+component using the verilog module. Make sure to assign `avl_irq` to an
+"Interrupt Sender" interface and set the signal type to "irq". Add this
+component to the system.
+
+When adding the HPS to the system, make sure to check
+"Enable FPGA-to-HPS interrupts" in the "Interrupts" section of the
+"FPGA Interfaces" tab. Connect the clock, reset, and avalon slave interfaces
+as usual. Then, connect the interrupt line by clicking on the path from
+FPGA peripheral to HPS in the "IRQ" column. Your final system should look
+something like the following.
+
+![FPGA Interrupt SoC system](http://i.imgur.com/xoGNs1U.png?1)
+
+Note the "0" on the interrupt line. This is the interrupt number assigned
+to this IRQ. It is important, as it determines what interrupt number on the
+HPS corresponds to this interrupt signal. On the Cyclone V, FPGA interrupts
+start at IRQ number 72, so our interrupt 0 corresponds to IRQ 72.
+
+## The Linux Kernel Module
+
+In order to be able to handle these interrupts in software, we need to write
+a linux kernel module which registers an ISR for our interrupt. A basic
+module would register an ISR that simply reads the input state and returns.
+Such a module would look something like this.
+
+{% highlight c %}
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/ioport.h>
+#include <linux/io.h>
+#include <linux/interrupt.h>
+
+void *fpga_uinput_mem;
+static uint8_t input_state;
+
+static irqreturn_t fpga_uinput_interrupt(int irq, void *dev_id)
+{
+	if (irq != UINPUT_INT_NUM)
+		return IRQ_NONE;
+
+	input_state = ioread8(fpga_uinput_mem);
+
+	return IRQ_HANDLED;
+}
+
+static int __init fpga_uinput_init(void)
+{
+	int ret;
+	struct resource *res;
+
+	res = request_mem_region(UINPUT_BASE, UINPUT_SIZE, "fpga_uinput");
+	if (res == NULL) {
+		ret = -EBUSY;
+		goto fail_request_mem;
+	}
+
+	fpga_uinput_mem = ioremap(UINPUT_BASE, UINPUT_SIZE);
+	if (fpga_uinput_mem == NULL) {
+		ret = -EFAULT;
+		goto fail_ioremap;
+	}
+
+	ret = request_irq(UINPUT_INT_NUM, fpga_uinput_interrupt,
+			0, "fpga_uinput", NULL);
+	if (ret < 0)
+		goto fail_request_irq;
+
+	return 0;
+
+fail_request_irq:
+	iounmap(fpga_uinput_mem);
+fail_ioremap:
+	release_mem_region(UINPUT_BASE, UINPUT_SIZE);
+fail_request_mem:
+	return ret;
+}
+
+static void __exit fpga_uinput_exit(void)
+{
+	free_irq(UINPUT_INT_NUM, NULL);
+	iounmap(fpga_uinput_mem);
+	release_mem_region(UINPUT_BASE, UINPUT_SIZE);
+	driver_remove_file(&fpga_uinput_driver, &driver_attr_fpga_uinput);
+	driver_unregister(&fpga_uinput_driver);
+}
+
+MODULE_LICENSE("Dual BSD/GPL");
+
+module_init(fpga_uinput_init);
+module_exit(fpga_uinput_exit);
+{% endhighlight %}
+
+This isn't particularly useful, since there is no way to notify userspace of
+the state changes. In order to do that, we'll add a read-only sysfs device.
+Reads on the sysfs file will block until an interrupt occurs. Once this
+happens, the current state of the inputs is sent to the user.
+
+How do you block the read call? We use a data structure in the kernel called
+a wait queue. A wait queue can defined like so.
+
+{% highlight c %}
+static DECLARE_WAIT_QUEUE_HEAD(interrupt_wq);
+{% endhighlight %}
+
+In the "show" function for our sysfs device, we wait until a flag is set
+by the interrupt controller.
+
+{% highlight c %}
+static int interrupt_flag = 0;
+
+static ssize_t fpga_uinput_show(struct device_driver *drv, char *buf)
+{
+	if (wait_event_interruptible(interrupt_wq, interrupt_flag != 0)) {
+		ret = -ERESTART;
+		goto release_and_exit;
+	}
+
+	interrupt_flag = 0;
+
+	buf[0] = input_state;
+	ret = 1;
+
+release_and_exit:
+	return ret;
+}
+{% endhighlight %}
+
+The `wait_event_interruptible` call is what pauses execution of
+`fpga_uinput_show` until an interrupt occurs. If the wait is interrupted
+(not by the interrupt we want, but by something like a `SIGINT`), it returns
+a non-zero value, and we must therefore do some error handling.
+
+If the wait ends successfully, we unset the interrupt flag and copy the
+input state read from the peripheral to the user.
+
+In our ISR, we must add some code to set the interrupt flag and wake up the
+processes waiting on the wait queue.
+
+{% highlight c %}
+interrupt_flag = 1;
+wake_up_interruptible(&interrupt_wq);
+{% endhighlight %}
+
+You can find the full code for this kernel module in the
+[Github Repo](https://github.com/zhemao/interrupt_example/blob/master/software/kernel/fpga_uinput.c).
+
+## Userspace program
+
+Our userspace program is then pretty simple. All it has to do repeatedly
+open and read the sysfs file.
+
+{% highlight c %}
+#define SYSFS_FILE "/sys/bus/platform/drivers/fpga_uinput/fpga_uinput"
+#define NUM_SWITCHES 4
+#define NUM_KEYS 4
+
+void print_state_change(uint8_t cur_state, uint8_t last_state)
+{
+	uint8_t changed = cur_state ^ last_state;
+	int i;
+
+	for (i = 0; i < NUM_SWITCHES; i++) {
+		if (!((changed >> i) & 1))
+			continue;
+		if ((cur_state >> i) & 1)
+			printf("switch %d flipped up\n", i);
+		else
+			printf("switch %d flipped down\n", i);
+	}
+
+	for (i = 0; i < NUM_KEYS; i++) {
+		int shift = NUM_SWITCHES + i;
+
+		if (!((changed >> shift) & 1))
+			continue;
+		if ((cur_state >> shift) & 1)
+			printf("key %d released\n", i);
+		else
+			printf("key %d pushed\n", i);
+	}
+}
+
+int main(void) {
+	FILE *f;
+	uint8_t last_state = 0xf0;
+	int ret;
+
+	for (;;) {
+		uint8_t cur_state;
+		f = fopen(SYSFS_FILE, "r");
+		if (f == NULL) {
+			perror("fopen");
+			return EXIT_FAILURE;
+		}
+		ret = fread(&cur_state, 1, 1, f);
+		fclose(f);
+		if (ret != 1) {
+			if (errno == EAGAIN)
+				continue;
+			return EXIT_FAILURE;
+		}
+		print_state_change(cur_state, last_state);
+		last_state = cur_state;
+	}
+
+	return 0;
+}
+{% endhighlight %}
+
+Once the userspace code reads the current state, it compares it to the
+previous state to determine which of the inputs has changed.
+
+## Conclusion
+
+So now you know how to handle FPGA interrupts. This will allow you to design
+much more efficient interfaces between your FPGA hardware peripherals and the
+CPU.
+
+[<- Part 9]({% post_url 2014-01-26-sockit-9 %})

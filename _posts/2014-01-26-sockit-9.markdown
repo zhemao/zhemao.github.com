@@ -682,3 +682,4 @@ Try playing around with the filter weights, filter size, and delay time to
 see how they affect your perception of the sound.
 
 [<- Part 8]({% post_url 2014-01-15-sockit-8 %})
+[Part 10 ->]({% post_url 2014-05-24-sockit-10 %})
