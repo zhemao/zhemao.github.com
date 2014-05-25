@@ -883,3 +883,6 @@ is quite loud.
 So now we have audio working on the FPGA. In my next post, I will discuss the
 implementation of FIR filters on the FPGA, which will allow us to do some
 interesting audio processing.
+
+[<- Part 7]({% post_url 2014-01-08-sockit-7 %})
+[Part 9 ->]({% post_url 2014-01-26-sockit-9 %})

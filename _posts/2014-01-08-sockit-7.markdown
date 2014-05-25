@@ -449,3 +449,4 @@ these sorts of applications in the next few posts, as we look at implementing
 real-time digital audio effects on the FPGA.
 
 [<- Part 6]({% post_url 2014-01-06-sockit-6 %})
+[Part 8 ->]({% post_url 2014-01-15-sockit-8 %})
