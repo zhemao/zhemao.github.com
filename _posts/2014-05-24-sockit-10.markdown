@@ -105,6 +105,10 @@ to this IRQ. It is important, as it determines what interrupt number on the
 HPS corresponds to this interrupt signal. On the Cyclone V, FPGA interrupts
 start at IRQ number 72, so our interrupt 0 corresponds to IRQ 72.
 
+At this point you should generate your Qsys system. You will see some warnings
+about not being able to connect clock or reset for "irq\_mapper.sender".
+Do not worry about these warnings. The interrupts will still work.
+
 ## The Linux Kernel Module
 
 In order to be able to handle these interrupts in software, we need to write
