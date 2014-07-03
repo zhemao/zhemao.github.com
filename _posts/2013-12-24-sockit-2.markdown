@@ -175,6 +175,7 @@ First, go to "Target options" and set the following options
  * Target Architecture: ARM (little endian)
  * Target Architecture Variant: cortex-A9
  * Target ABI: EABIhf
+ * Enable NEON SIMD extension support
  * Floating point strategy: VFPv2
  * ARM instruction set: ARM
 
@@ -183,8 +184,12 @@ to the number of cores you have.
 
 Go to "Toolchain" and do the following
 
+ * Set "Toolchain Type" to "External toolchain"
+ * Set "Toolchain" to "Custom toolchain"
+ * Set "Toolchain origin" to "Pre-installed toolchain"
  * Set "Toolchain path" to the folder you extracted the Linaro toolchain to
  * Set "Toolchain prefix" to "arm-linux-gnueabihf"
+ * Set "External toolchain header series" to "3.1.x"
  * Change "External toolchain C library" to "glibc/eglibc"
  * Select "Toolchain has RPC support"
  * Select "Toolchain has C++ support"
@@ -193,7 +198,7 @@ Go to "Toolchain" and do the following
 Go to "System configuration" and change the following.
 
  * Change the hostname, if you wish
- * Set a root password, if you prefer
+ * Set a root password, if you prefer (if you do not, there will be no root password)
  * Select "Run a getty after boot"
  * Go to "getty options"
     - Change the baudrate to 57600
@@ -209,7 +214,7 @@ Save and exit menuconfig, then run `make` to build everything. If everything
 works out, you will see the root filesystem image generated under
 "output/images/rootfs.tar". You will need to untar this onto the root partition.
 
-    sudo mkfs.ext3 /dev/sdX2
+    sudo mkfs.ext2 /dev/sdX2
     sudo mount /dev/sdX2 /mnt
     sudo tar xf output/images/rootfs.tar -C /mnt
 
