@@ -1,0 +1,30 @@
+---
+title: Creek Vector Co-processor
+layout: default
+category: project
+---
+
+Creek is a floating-point vector co-processor I developed in order to learn
+more about computer architecture and the [Chisel](https://chisel.eecs.berkeley.edu/)
+hardware description language.
+
+The basic functional blocks of the co-processor are streaming floating-point
+adder and multiplier units. Each of these units have four pipelined vector
+lanes and operate on single-precision floating point numbers. These functional
+blocks, along with a memory controller, are connected by a crossbar switch
+to seven vector registers (effectively small sequential-access memories).
+
+Each vector register can support simultaneous reads and writes. This allows
+a higher degree of parallelism, but it becomes the programmer's responsibility
+to schedule operations in such a way that a fast writer doesn't overwrite the
+values a slow reader is trying to read (or, vice-versa, that a fast reader
+does not try to read values that a slow writer has not yet updated).
+
+The co-processor also does not have any control flow instructions.
+Instructions are issued one after another until a special instruction which
+pauses the co-processor. This instruction allows the host processor
+to take back control, copy data between its memory and co-processor memory,
+write new instructions, and restart the co-processor.
+
+The Chisel source code, Verilog FPGA glue code, and test software for this
+project is available on [Github](https://github.com/zhemao/creek).
