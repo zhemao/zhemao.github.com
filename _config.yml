@@ -1,4 +1,4 @@
 name: Howard Mao
-pygments: true
+highlighter: pygments
 exclude: [newpost.sh]
 markdown: kramdown
