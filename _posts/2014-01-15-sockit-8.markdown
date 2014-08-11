@@ -536,9 +536,9 @@ falling edge of BCLK. The first (most significant) bit of a sample is sent
 on the rising or falling edge of LRC.
 
 You will notice that there are 128 / 4 = 32 cycles of BCLK in one phase of
-MCLK, but only 16 bits in a sample. Fortunately, the timing diagram shows us
-how to handle this. After transmitting the bits in big-endian order, the
-value of the data signals in the last 16 BCLK clocks cycles are don't cares.
+LRCK, but only 16 bits in a (mono) sample. Fortunately, the timing diagram
+shows us how to handle this. After transmitting the bits in big-endian order,
+the value of the data signals in the last 16 BCLK clocks cycles are don't cares.
 
 ### The Final Code
 
