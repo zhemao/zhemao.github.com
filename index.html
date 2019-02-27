@@ -5,15 +5,32 @@ category: main
 
 <p>
 I am an EECS Ph.D. Student at UC Berkeley in the
-<a href="https://aspire.eecs.berkeley.edu/">ASPIRE</a> Lab.
-My research interests are in novel architectures for parallel computing
-and tools for making parallel processors more easily programmable.
+<a href="https://adept.eecs.berkeley.edu/">ADEPT</a> Lab advisd by Randy Katz.
+My research interests are in exploring novel architectures for warehouse scale
+computers. I'm specifically interested in designing disaggregated memory
+systems.
+</p>
+
+<p>
+As part of my research, I've contributed lots of code to the
+<a href="https://fires.im">FireSim</a> project. FireSim is a platform for
+FPGA-hosted cycle-accurate simulation of warehouse scale computers in the AWS cloud.
+Using FireSim and EC2 F1 instances, you can spin up a cluster of datacenter
+nodes with custom hardware (from RTL), link them together in a timing-accurate
+network, and run real operating systems and software on top of them.
+</p>
+
+<p>
+I have also contributed RTL to the
+<a href="https://github.com/freechipsproject/rocket-chip">Rocket Chip</a>
+RISC-V SoC Generator and created
+<a href="https://github.com/ucb-bar/project-template">RISC-V Project Template</a>,
+which has been used as a starting point for many RISC-V-based chip designs.
 </p>
 
 <p>
 You can find some of my code on <a href="https://github.com/zhemao">Github</a>
-and <a href="https://bitbucket.org/zhemao"/>Bitbucket</a>. I have some videos
-of my hardware projects on <a href="http://www.youtube.com/zhemaoce">Youtube</a>.
+and <a href="https://bitbucket.org/zhemao"/>Bitbucket</a>. 
 </p>
 
 <h2>Blog Pages</h2>
@@ -32,7 +49,55 @@ of my hardware projects on <a href="http://www.youtube.com/zhemaoce">Youtube</a>
 {% endfor %}
 </ul>
 
-<h2>Papers and Reports</h2>
+<h2>Publications</h2>
 <ul class="front-page-list">
-  <li><a href="/papers/memcached-fpga-accel.pdf">Accelerating Memcached on an FPGA</a></li>
+  <li>
+    <a href="http://people.eecs.berkeley.edu/~lisakwu/papers/2019-hpca-ir-preprint.pdf">
+      FPGA Accelerated INDEL Realignment in the Cloud
+    </a>
+    Lisa Wu, David Bruns-Smith, Frank A. Nothaft, Qijing Huang, Sagar Karandikar, Johnny Le, Andrew Lin, <strong>Howard Mao</strong>, Brendan Sweeney, Krste Asanović, David A. Patterson, and Anthony D. Joseph
+  </li>
+  <li>
+    <a href="https://ieeexplore.ieee.org/document/8579326">
+      A Generated Multirate Signal Analysis RISC-V SoC in 16nm FinFET
+    </a><br/>
+    Stevo Bailey, Jaeduk Han, Paul Rigge, Richard Lin, Eric Chang, <strong>Howard Mao</strong>, Zhongkai Wang,
+Chick Markley, Adam Izraelevitz, Angie Wang, Nathan Narevsky, Woorham Bae, Steve Shauck,
+Sergio Montano, Justin Norsworthy, Munir Razzaque, Wen Hau Mat, Akalu Lentiro, Matthew Doerflein,
+Darin Heckendom, Jim McGrath, Franco DeSeta, Ronen Shoham, Mike Stellfox, Mark Snowden,
+Joseph Cole, Dan Fuhrman, Brian Richards, Jonathan Bachrach, Elad Alon, and Borivoje Nikolic
+  </li>
+  <li>
+    <a href="https://ieeexplore.ieee.org/document/8416816">
+      FireSim: FPGA-Accelerated Cycle-Exact Scale-Out System Simulation in the Public Cloud
+    </a><br/>
+    Sagar Karandikar, <strong>Howard Mao</strong>, Donggyu Kim, David Biancolin, Alon Amid, Dayeol Lee,
+Nathan Pemberton, Emmanuel Amaro, Colin Schmidt, Aditya Chopra, Qijing Huang,
+Kyle Kovacs, Borivoje Nikolic, Randy Katz, Jonathan Bachrach, Krste Asanovic
+  </li>
+  <li>
+    <a href="https://ieeexplore.ieee.org/document/8240277">
+      A 0.37mm2LTE/Wi-Fi compatible, memory-based, runtime-reconfigurable 2n3m5kFFT accelerator integrated with a RISC-V core in 16nm FinFET
+    </a><br/>
+    Angie Wang, Brian Richards, Palmer Dabbelt, <strong>Howard Mao</strong>, Stevo Bailey, Jaeduk Han, Eric Chang, James Dunn, Elad Alon, Borivoje Nikolić
+  </li>
+  <li>
+    <a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2017/EECS-2017-2.html">
+      Hardware Acceleration for Memory to Memory Copies
+    </a><br/>
+    <strong>Howard Mao</strong>
+  </li>
+  <li>
+    <a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2016/EECS-2016-17.html">
+      The Rocket Chip Generator
+    </a><br/>
+    Krste Asanović, Rimas Avizienis, Jonathan Bachrach, Scott Beamer, David Biancolin, Christopher Celio, Henry Cook, Daniel Dabbelt, John Hauser, Adam Izraelevitz, Sagar Karandikar, Ben Keller, Donggyu Kim, John Koenig, Yunsup Lee, Eric Love, Martin Maas, Albert Magyar, <strong>Howard Mao</strong>, Miquel Moreto, Albert Ou, David A. Patterson, Brian Richards, Colin Schmidt, Stephen Twigg, Huy Vo and Andrew Waterman
+  </li>
+  <li>
+    <a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2015/EECS-2015-263.html">
+      The Hwacha Microarchitecture Manual
+    </a><br/>
+    Yunsup Lee, Albert Ou, Colin Schmidt, Sagar Karandikar, <strong>Howard Mao</strong> and Krste Asanović
+  </li>
 </ul>
+
