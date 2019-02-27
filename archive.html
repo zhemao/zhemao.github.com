@@ -1,0 +1,40 @@
+---
+title: Archive
+layout: default
+category: archive
+---
+
+<h2>Blog Pages</h2>
+
+<ul class="front-page-list">
+{% for post in site.categories.blog %}
+<li><span class="blog-date">{{post.date | date_to_string }} </span>
+    <a href="{{post.url}}">{{post.title}}</a></li>
+{% endfor %}
+</ul>
+
+<h2>Projects</h2>
+<ul class="front-page-list">
+{% for post in site.categories.project %}
+<li><span class="blog-date">{{post.date | date_to_string }} </span><a href="{{post.url}}">{{post.title}}</a></li>
+{% endfor %}
+</ul>
+
+<h2>Unpublished Reports</h2>
+<ul class="front-page-list">
+  <li>
+    <span class="blog-date">11 Dec 2015</span>
+    <a href="/papers/managing-memory.pdf">Managing On-Chip Memory Hierarchies</a>
+    Sagar Karandikar, Albert Magyar, <strong>Howard Mao</strong>
+  </li>
+  <li>
+    <span class="blog-date">11 May 2015</span>
+    <a href="/papers/nephele.pdf">Nephele: A Simple Solution for Data Replication</a>
+    Joao Carreira, <strong>Howard Mao</strong>, Nathan Pemberton
+  </li>
+  <li>
+    <span class="blog-date">16 Dec 2014</span>
+    <a href="/papers/memcached-fpga-accel.pdf">Hardware Acceleration of Key-Value Stores</a>
+    <strong>Howard Mao</strong>, Sagar Karandikar, Albert Ou, Soumya Basu
+  </li>
+</ul>
